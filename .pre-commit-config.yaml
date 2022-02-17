@@ -2,16 +2,42 @@ repos:
 - repo: https://github.com/PyCQA/flake8
   rev: 4.0.1
   hooks:
-    - id: flake8
-- repo: https://github.com/PyCQA/pylint
-  rev: v2.12.2
-  hooks:
-    - id: pylint
+    - 
+      id: flake8
+      exclude: |
+            (?x)^(
+                config/config/ |
+                migrations/
+            )
 - repo: https://github.com/PyCQA/isort
   rev: 5.10.1
   hooks:
-    - id: isort
+    - 
+      id: isort
+      exclude: |
+            (?x)^(
+                config/config/ |
+                migrations/
+            )
 - repo: https://github.com/psf/black
   rev: 22.1.0
   hooks:
-    - id: black
+    - 
+      id: black
+      exclude: |
+            (?x)^(
+                config/config/ |
+                migrations/
+            )
+- repo: https://github.com/PyCQA/pylint
+  rev: v2.12.2
+  hooks:
+    - 
+      id: pylint
+      exclude: |
+            (?x)^(
+                config/config/ |
+                migrations/ |
+                config/routes4life_api/apps.py |
+                config/manage.py
+            )
