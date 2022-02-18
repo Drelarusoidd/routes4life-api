@@ -8,7 +8,6 @@ repos:
         language_version: python3
         exclude: |
           (?x)^(
-              config/config/ |
               migrations/ |
           )
 
@@ -20,7 +19,6 @@ repos:
         language_version: python3
         exclude: |
           (?x)^(
-              config/config/ |
               migrations/ |
           )
   - repo: https://github.com/PyCQA/pylint
@@ -33,6 +31,5 @@ repos:
         language_version: python3
         exclude: |
           (?x)^(
-              config/config/ |
               migrations/ |
           )
