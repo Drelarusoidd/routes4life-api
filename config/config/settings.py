@@ -12,18 +12,23 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 
+from decouple import Config, RepositoryEnv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Take environment variables from .env file
+env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-cm!w2#m6rh83cs=n(pz2rp-!^jw_ufs_^%msy7y+tmvgkh7w3c"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_config.get("DEBUG", default=False, cast=bool)
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = env_config.get("SECRET_KEY")
 
 ALLOWED_HOSTS = []
 
@@ -39,7 +44,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # our app
     "routes4life_api.apps.Routes4LifeApiConfig",
+    # 3d party apps
+    "rest_framework",
 ]
+
+AUTH_USER_MODEL = "routes4life_api.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -77,8 +86,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": env_config.get("DB_ENGINE"),
+        "NAME": env_config.get("DB_NAME"),
+        "USER": env_config.get("USER"),
+        "PASSWORD": env_config.get("PASSWORD"),
+        "HOST": env_config.get("HOST"),
+        "PORT": env_config.get("PORT"),
     }
 }
 

@@ -9,7 +9,7 @@ repos:
         exclude: |
           (?x)^(
               config/config/ |
-              migrations/
+              migrations/ |
           )
 
   - repo: https://github.com/psf/black
@@ -21,7 +21,7 @@ repos:
         exclude: |
           (?x)^(
               config/config/ |
-              migrations/
+              migrations/ |
           )
   - repo: https://github.com/PyCQA/pylint
     rev: v2.12.2
@@ -34,5 +34,5 @@ repos:
         exclude: |
           (?x)^(
               config/config/ |
-              migrations/
+              migrations/ |
           )
