@@ -1,5 +1,17 @@
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
+from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+
+PHONE_NUMBER_VALIDATOR = RegexValidator(
+    r"^[+]?[0-9]{7,15}$",
+    _("Invalid phone number."),
+)
 
 
 class UserManager(BaseUserManager):
@@ -36,13 +48,38 @@ class UserManager(BaseUserManager):
         return self._create_user(email, password, **extra_fields)
 
 
-class User(AbstractUser):
-    """User model."""
+class User(AbstractBaseUser, PermissionsMixin):
+    """Custom User model."""
 
-    username = None
+    first_name = models.CharField(_("first name"), max_length=150, blank=True)
+    last_name = models.CharField(_("last name"), max_length=150, blank=True)
+    phone_number = models.CharField(
+        _("phone number"),
+        max_length=16,
+        blank=False,
+        validators=[PHONE_NUMBER_VALIDATOR],
+    )
     email = models.EmailField(unique=True)
+    is_staff = models.BooleanField(
+        _("staff status"),
+        default=False,
+        help_text=_("Designates whether the user can log into this admin site."),
+    )
+    is_active = models.BooleanField(
+        _("active"),
+        default=True,
+        help_text=_(
+            "Designates whether this user should be treated as active. "
+            "Unselect this instead of deleting accounts."
+        ),
+    )
+    date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ["phone_number"]
 
     objects = UserManager()
+
+    def clean(self):
+        super().clean()
+        self.email = self.__class__.objects.normalize_email(self.email)
