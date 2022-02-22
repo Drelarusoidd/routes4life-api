@@ -22,3 +22,13 @@ class RegisterUserSerializer(ModelSerializer):
         if raw_data["password"] != raw_data["password2"]:
             raise serializers.ValidationError("Passwords don't match!")
         return raw_data
+
+
+class UpdateEmailSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("email",)
+
+    def __init__(self, *args, **kwargs):
+        kwargs["partial"] = True
+        super(UpdateEmailSerializer, self).__init__(*args, **kwargs)
