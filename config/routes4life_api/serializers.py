@@ -32,3 +32,10 @@ class UpdateEmailSerializer(ModelSerializer):
     def __init__(self, *args, **kwargs):
         kwargs["partial"] = True
         super(UpdateEmailSerializer, self).__init__(*args, **kwargs)
+
+
+class UserInfoSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("email", "first_name", "last_name", "phone_number")
+        read_only_fields = ("email",)

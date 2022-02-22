@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from rest_framework import mixins, viewsets
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
@@ -9,7 +10,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .serializers import RegisterUserSerializer, UpdateEmailSerializer
+from .permissions import IsSameUserOrReadonly
+from .serializers import (
+    RegisterUserSerializer,
+    UpdateEmailSerializer,
+    UserInfoSerializer,
+)
 
 User = get_user_model()
 
@@ -30,3 +36,14 @@ def change_my_email(request):
         serializer.save()
         return Response({"detail": "Successfully changed email."}, 200)
     return Response({"error": "Someone has this email already."}, 400)
+
+
+class UserInfoViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    queryset = User.objects.all()
+    serializer_class = UserInfoSerializer
+    permission_classes = (IsSameUserOrReadonly,)
