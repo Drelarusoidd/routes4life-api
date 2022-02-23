@@ -31,7 +31,7 @@ DEBUG = env_config.get("DEBUG", default=False, cast=bool)
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env_config.get("SECRET_KEY")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -127,10 +127,10 @@ SIMPLE_JWT = {
 
 DATABASES = {
     "default": {
-        "ENGINE": env_config.get("DB_ENGINE"),
-        "NAME": env_config.get("DB_NAME"),
-        "USER": env_config.get("USER"),
-        "PASSWORD": env_config.get("PASSWORD"),
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env_config.get("POSTGRES_NAME"),
+        "USER": env_config.get("POSTGRES_USER"),
+        "PASSWORD": env_config.get("POSTGRES_PASSWORD"),
         "HOST": env_config.get("HOST"),
         "PORT": env_config.get("PORT"),
     }
