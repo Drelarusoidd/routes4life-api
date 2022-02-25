@@ -16,3 +16,7 @@ RUN poetry config virtualenvs.create false && poetry install
 
 # Creating folders, and files for a project:
 COPY . /code/
+
+WORKDIR /code/config
+RUN python manage.py collectstatic --no-input
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "config.wsgi:application"]

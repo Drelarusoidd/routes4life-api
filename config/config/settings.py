@@ -173,6 +173,16 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+STATIC_ROOT = BASE_DIR / "static"
+
+# STATICFILES_DIRS = (
+#     # ("js", STATIC_ROOT / "js"),
+#     # ("css", STATIC_ROOT / "css"),
+#     # ("images", STATIC_ROOT / "images"),
+#     # ("fonts", STATIC_ROOT / "fonts"),
+#     Path.joinpath(BASE_DIR, "static"),
+# )
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 

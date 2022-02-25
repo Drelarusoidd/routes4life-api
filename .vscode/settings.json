@@ -15,8 +15,14 @@
         }
     },
     "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": ["--max-line-length=100"],
+    "python.linting.flake8Args": ["--max-line-length=100", "--exclude=test_*.py, conftest.py, factories.py"],
     "python.linting.pylintEnabled": true,
-    "python.linting.pylintArgs": ["--disable=C0114", "--disable=C0115", "--disable=C0116", "--disable=W0237"],
+    "python.linting.pylintArgs": ["--disable=C0114", "--disable=C0115", "--disable=C0116", "--disable=W0237", "--exclude=test_*.py"],
     "python.languageServer": "Jedi",
+    "python.testing.pytestArgs": [
+        "-c",
+        "config/pytest.ini"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
 }
