@@ -5,21 +5,21 @@ from .models import User
 
 
 class RegisterUserSerializer(ModelSerializer):
-    password2 = serializers.CharField(write_only=True)
+    password_2 = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ("email", "phone_number", "password", "password2")
+        fields = ("email", "phone_number", "password", "password_2")
         extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):
-        validated_data.pop("password2")
+        validated_data.pop("password_2")
         email = validated_data.pop("email")
         password = validated_data.pop("password")
         return User.objects.create_user(email, password, **validated_data)
 
     def validate(self, raw_data):
-        if raw_data["password"] != raw_data["password2"]:
+        if raw_data["password"] != raw_data["password_2"]:
             raise serializers.ValidationError("Passwords don't match!")
         return raw_data
 

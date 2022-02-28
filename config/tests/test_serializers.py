@@ -7,11 +7,6 @@ from routes4life_api.serializers import (
     UserInfoSerializer,
 )
 
-# def test_new_user(user_factory):
-#     print(user_factory.email)
-#     print(user_factory.phone_number)
-#     assert True
-
 
 @pytest.mark.django_db
 def test_register_user_serializer(user_factory):
@@ -22,7 +17,7 @@ def test_register_user_serializer(user_factory):
             "email": user_data.email,
             "phone_number": user_data.phone_number,
             "password": password,
-            "password2": password,
+            "password_2": password,
         }
     )
     assert serializer.is_valid()
