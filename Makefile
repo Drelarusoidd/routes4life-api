@@ -7,5 +7,5 @@ run:
 stop:
 	docker-compose down
 test:
-	cd config && pytest -rP
+	docker-compose run api pytest && docker-compose down
 #lint:
