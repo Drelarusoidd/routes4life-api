@@ -11,4 +11,5 @@ stop:
 	docker-compose down
 test:
 	docker-compose run api python -m pytest && docker-compose down
-#lint:
+lint:
+	pre-commit run --all-files

@@ -11,3 +11,4 @@ test:
     stage: test
     script: 
         - make test
+        - make lint
