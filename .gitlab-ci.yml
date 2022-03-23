@@ -4,6 +4,7 @@ services:
   - docker:dind
 
 stages:
+    - lint
     - test
 
 
@@ -11,4 +12,13 @@ test:
     stage: test
     script: 
         - make test
-        - make lint
+
+lint:
+    stage: lint
+    script:
+      - python --version
+      - pip --version
+      - poetry --version
+      - pip install pre-commit
+      - python -m pre-commit --version
+      - make lint
