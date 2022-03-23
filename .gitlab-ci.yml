@@ -1,2 +1,2 @@
 test:
-    script: echo "Hello pipeline!"
+    script: echo "Hello pipeline! Again!"
