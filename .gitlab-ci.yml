@@ -1,2 +1,13 @@
+image: docker
+
+services:
+  - docker:dind
+
+stages:
+    - test
+
+
 test:
-    script: echo "Hello pipeline! Again!"
+    stage: test
+    script: 
+        - make test
