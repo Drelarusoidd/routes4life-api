@@ -4,7 +4,6 @@ services:
   - docker:dind
 
 stages:
-    - lint
     - test
 
 
@@ -14,7 +13,7 @@ test:
         - make test
 
 lint:
-    stage: lint
+    stage: test
     script:
       - python --version
       - pip --version
