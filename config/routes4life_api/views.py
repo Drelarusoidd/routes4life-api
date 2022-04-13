@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .serializers import (
+    ChangePasswordSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UserInfoSerializer,
@@ -33,8 +34,40 @@ def change_my_email(request):
     serializer = UpdateEmailSerializer(request.user, {"email": new_email}, partial=True)
     if serializer.is_valid():
         serializer.save()
-        return Response({"detail": "Successfully changed email."}, 200)
-    return Response({"error": "Someone has this email already."}, 400)
+        return Response({"email": new_email}, 200)
+    return Response(
+        {"detail": serializer.errors.get("email", "Bad request!")},
+        400,
+    )
+
+
+@api_view(["PATCH"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def change_my_password(request):
+    old_passwd = request.data.get("password")
+    new_passwd = request.data.get("new_password")
+    new_passwd2 = request.data.get("new_password_2")
+    serializer = ChangePasswordSerializer(
+        request.user,
+        {
+            "password": old_passwd,
+            "new_password": new_passwd,
+            "new_password_2": new_passwd2,
+        },
+        partial=True,
+    )
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"message": "Successfully changed password."}, 200)
+    return Response(
+        {
+            "detail": serializer.errors.get(
+                "non_field_errors", "No blank fields allowed!"
+            )
+        },
+        400,
+    )
 
 
 class UserInfoViewSet(viewsets.GenericViewSet):
@@ -50,15 +83,13 @@ class UserInfoViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=["put"])
     def update_current(self, request):
         serializer = self.get_serializer(request.user, data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+            return Response(serializer.data, 200)
 
     @action(detail=False, methods=["patch"])
     def partial_update_current(self, request):
         serializer = self.get_serializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+            return Response(serializer.data, 200)
