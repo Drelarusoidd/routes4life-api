@@ -31,5 +31,3 @@ RUN poetry show
 COPY . /code/
 
 WORKDIR /code/config
-
-# RUN pip install pytest
