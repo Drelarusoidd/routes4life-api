@@ -14,8 +14,7 @@ test:
     - docker-compose exec api bash
     - whoami
     - which python3.10
-    - python -m pytest --version
-    - python -m pytest
+    - poetry run pytest
     - exit
 
 lint:
