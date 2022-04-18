@@ -1,7 +1,9 @@
 import pytest
+from django.contrib.auth.hashers import check_password
 from faker import Faker
 from routes4life_api.models import User
 from routes4life_api.serializers import (
+    ChangePasswordSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UserInfoSerializer,
@@ -79,3 +81,62 @@ def test_user_info_serializer(user_factory):
     assert serializer.is_valid()
     serializer.save()
     assert test_user.email == old_email and test_user.phone_number != old_phone
+
+
+@pytest.mark.django_db
+def test_change_password_serializer(user_factory):
+    test_user = user_factory.create()
+    password = "123456789"
+    test_user.set_password(password)
+    assert test_user.check_password(password)
+
+    # Check for normal behavior
+    new_password = "234567890"
+    serializer = ChangePasswordSerializer(
+        instance=test_user,
+        data={
+            "password": password,
+            "new_password": new_password,
+            "new_password_2": new_password,
+        },
+    )
+    assert serializer.is_valid()
+    assert check_password(new_password, serializer.save().password)
+
+    # Check for blank password
+    password = new_password
+    new_password = ""
+    serializer = ChangePasswordSerializer(
+        instance=test_user,
+        data={
+            "password": password,
+            "new_password": new_password,
+            "new_password_2": new_password,
+        },
+    )
+    assert serializer.is_valid() is False
+
+    # Check for not matching passwords
+    new_password = "234567890"
+    new_password_2 = "123456789"
+    serializer = ChangePasswordSerializer(
+        instance=test_user,
+        data={
+            "password": password,
+            "new_password": new_password,
+            "new_password_2": new_password_2,
+        },
+    )
+    assert serializer.is_valid() is False
+
+    # Check for wrong old password
+    new_password = "234567890"
+    serializer = ChangePasswordSerializer(
+        instance=test_user,
+        data={
+            "password": "definetly_not_a_password",
+            "new_password": new_password,
+            "new_password_2": new_password_2,
+        },
+    )
+    assert serializer.is_valid() is False

@@ -1,15 +1,13 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .views import RegisterAPIView, UserInfoViewSet, change_my_email
-
-# router = SimpleRouter()
-# router.register(r"users/settings/", UserInfoViewSet)
+from .views import RegisterAPIView, UserInfoViewSet, change_my_email, change_my_password
 
 urlpatterns = [
     path("auth/get-token/", TokenObtainPairView.as_view(), name="get_token_pair"),
     path("auth/signup/", RegisterAPIView.as_view(), name="register"),
     path("auth/change-email/", change_my_email, name="change_email"),
+    path("auth/change-password/", change_my_password, name="change_password"),
     path(
         "users/settings/",
         UserInfoViewSet.as_view(
