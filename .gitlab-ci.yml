@@ -11,7 +11,8 @@ test:
     stage: test
     script: 
         - make build
-        - make test
+        - docker-compose run api python -m pytest
+        - docker-compose down
 
 lint:
     stage: test
