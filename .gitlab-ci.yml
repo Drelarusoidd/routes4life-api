@@ -1,4 +1,6 @@
-image: docker
+image:
+  name: docker/compose:1.29.2
+  entrypoint: [""]
 
 services:
   - docker:dind
@@ -9,16 +11,19 @@ stages:
 test:
   stage: test
   script:
-    - make build-testimage
-    - docker-compose up -d
+    # - make build-testimage
+    # - docker-compose -f docker-compose-test.yml build --build-arg UNAME=$(whoami) --build-arg UID=$(id -u) --build-arg GID=$(id -g)
+    - docker-compose -f docker-compose-test.yml up -d
+    - docker-compose -f docker-compose-test.yml ps api
+    - docker exec --tty $(docker-compose -f docker-compose-test.yml ps -q api) python -m pytest
     # - docker-compose exec api python -m pytest
-    - docker-compose exec api bash
-    - ls -ahl
-    - pwd
-    - which python3.10
-    - python -m pytest
-    - exit
-    - docker-compose down
+    # - docker-compose exec api bash
+    # - ls -ahl
+    # - pwd
+    # - which python3.10
+    # - python -m pytest
+    # - exit
+    # - docker-compose down
 
 lint:
   stage: test

@@ -23,7 +23,7 @@ USER $UNAME
 COPY poetry.lock pyproject.toml /code/
 
 # Project initialization:
-RUN poetry config --local && poetry install
+RUN poetry config virtualenvs.create false && poetry install
 RUN poetry show --tree
 RUN poetry show
 
