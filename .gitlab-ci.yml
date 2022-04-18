@@ -14,8 +14,8 @@ test:
     # - make build-testimage
     # - docker-compose -f docker-compose-test.yml build --build-arg UNAME=$(whoami) --build-arg UID=$(id -u) --build-arg GID=$(id -g)
     - docker-compose -f docker-compose-test.yml up -d
-    - docker-compose -f docker-compose-test.yml ps api
-    - docker exec --tty $(docker-compose -f docker-compose-test.yml ps -q api) python -m pytest
+    - docker-compose -f docker-compose-test.yml ps -q api
+    - docker exec --tty $(docker-compose -f docker-compose-test.yml ps -q api) poetry run python -m pytest
     # - docker-compose exec api python -m pytest
     # - docker-compose exec api bash
     # - ls -ahl
