@@ -23,7 +23,7 @@ USER $UNAME
 COPY poetry.lock pyproject.toml /code/
 
 # Project initialization:
-RUN poetry config virtualenvs.create false && poetry install
+RUN poetry config && poetry install
 
 # Creating folders, and files for a project:
 ADD . /code/
@@ -31,4 +31,4 @@ ADD . /code/
 
 WORKDIR /code/config
 
-RUN pip install pytest
+# RUN pip install pytest
