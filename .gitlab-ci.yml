@@ -10,6 +10,7 @@ stages:
 test:
     stage: test
     script: 
+        - make build
         - make test
 
 lint:
