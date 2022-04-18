@@ -23,7 +23,9 @@ USER $UNAME
 COPY poetry.lock pyproject.toml /code/
 
 # Project initialization:
-RUN poetry config --local && poetry shell && poetry install
+RUN poetry config --local && poetry install
+RUN poetry show --tree
+RUN poetry show
 
 # Creating folders, and files for a project:
 COPY . /code/
