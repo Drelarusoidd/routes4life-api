@@ -14,7 +14,8 @@ test:
         - docker-compose up -d
         - docker ps -a
         - docker-compose exec api bash
-        - pytest
+        - whoami
+        - python -m pytest
         - exit
         - docker-compose down
 
