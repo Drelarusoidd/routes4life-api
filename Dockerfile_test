@@ -26,8 +26,7 @@ COPY poetry.lock pyproject.toml /code/
 RUN poetry config && poetry install
 
 # Creating folders, and files for a project:
-ADD . /code/
-
+COPY . /code/
 
 WORKDIR /code/config
 
