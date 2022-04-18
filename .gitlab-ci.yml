@@ -16,7 +16,9 @@ test:
         - docker-compose exec api bash
         - whoami
         - which python
-        - /usr/local/bin/python -m pytest
+        - poetry show --tree
+        - python -m pytest --version
+        - python -m pytest
         - exit
         - docker-compose down
 
