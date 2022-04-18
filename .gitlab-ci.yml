@@ -11,7 +11,11 @@ test:
     stage: test
     script: 
         - make build
-        - docker-compose run api python -m pytest
+        - docker-compose up -d
+        - docker ps -a
+        - docker-compose exec api bash
+        - python -m pytest
+        - exit
         - docker-compose down
 
 lint:
