@@ -16,6 +16,7 @@ test:
         - docker-compose exec api bash
         - whoami
         - which python
+        - pip install pytest
         - python -m pytest --version
         - python -m pytest
         - exit
