@@ -15,7 +15,7 @@ test:
         - docker ps -a
         - docker-compose exec api bash
         - whoami
-        - which python
+        - which python3.10
         - pip install pytest
         - python -m pytest --version
         - python -m pytest
