@@ -15,7 +15,8 @@ test:
         - docker ps -a
         - docker-compose exec api bash
         - whoami
-        - python -m pytest
+        - which python
+        - /usr/local/bin/python -m pytest
         - exit
         - docker-compose down
 
