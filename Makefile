@@ -13,3 +13,6 @@ test:
 	docker-compose run api python -m pytest && docker-compose down
 lint:
 	pre-commit run --all-files
+build-testimage:
+	docker-compose -f docker-compose-test.yml build --build-arg UNAME=$$(whoami) \
+		--build-arg UID=$$(id -u) --build-arg GID=$$(id -g) 

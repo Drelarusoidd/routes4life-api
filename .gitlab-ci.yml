@@ -4,29 +4,25 @@ services:
   - docker:dind
 
 stages:
-    - test
-
+  - test
 
 test:
-    stage: test
-    script: 
-        - make build
-        - docker-compose up -d
-        - docker ps -a
-        - docker-compose exec api bash
-        - whoami
-        - which python3.10
-        - pip install pytest
-        - sleep 100
-        - python -m pytest --version
-        - python -m pytest
-        - exit
+  stage: test
+  script:
+    - make build-testimage
+    - docker-compose up -d
+    - docker-compose exec api bash
+    - whoami
+    - which python3.10
+    - python -m pytest --version
+    - python -m pytest
+    - exit
 
 lint:
-    stage: test
-    script:
-      - python --version
-      - pip --version
-      - pip install pre-commit
-      - pre-commit --version
-      - make lint
+  stage: test
+  script:
+    - python --version
+    - pip --version
+    - pip install pre-commit
+    - pre-commit --version
+    - make lint
