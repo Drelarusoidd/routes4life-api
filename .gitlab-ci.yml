@@ -17,6 +17,7 @@ test:
         - whoami
         - which python3.10
         - pip install pytest
+        - sleep 100
         - python -m pytest --version
         - python -m pytest
         - exit
