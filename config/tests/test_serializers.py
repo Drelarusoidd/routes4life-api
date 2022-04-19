@@ -26,6 +26,33 @@ def test_register_user_serializer(user_factory):
     new_user = serializer.save()
     assert User.objects.filter(email=new_user.email).exists()
 
+    # DON'T PASS EMPTY PHONE NUMBER
+    user_data.email = ".".join(user_data.email.split(".")[:-1]) + ".exe"
+    assert new_user.email != user_data.email
+    password = "123456789"
+    serializer = RegisterUserSerializer(
+        data={
+            "email": user_data.email,
+            "phone_number": "  ",
+            "password": password,
+            "password_2": password,
+        }
+    )
+    assert serializer.is_valid() is False
+
+    # Right way is to completely ignore it
+    serializer = RegisterUserSerializer(
+        data={
+            "email": user_data.email,
+            "password": password,
+            "password_2": password,
+        }
+    )
+    assert serializer.is_valid()
+    new_user = serializer.save()
+    assert User.objects.filter(email=new_user.email).exists()
+    assert new_user.phone_number == "+000000000"
+
 
 @pytest.mark.django_db
 def test_update_email_serializer(user_factory):
@@ -72,6 +99,23 @@ def test_user_info_serializer(user_factory):
         and test_user.first_name != old_fname
         and test_user.last_name != old_lname
         and test_user.phone_number != old_phone
+    )
+
+    old_phone = test_user.phone_number
+    serializer = UserInfoSerializer(
+        instance=test_user,
+        data={
+            "first_name": fake.first_name(),
+            "last_name": fake.last_name(),
+        },
+    )
+    assert serializer.is_valid()
+    serializer.save()
+    assert (
+        test_user.email == old_email
+        and test_user.first_name != old_fname
+        and test_user.last_name != old_lname
+        and test_user.phone_number == old_phone
     )
 
     old_phone = test_user.phone_number

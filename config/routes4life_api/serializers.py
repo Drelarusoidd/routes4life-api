@@ -11,12 +11,16 @@ class RegisterUserSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = ("email", "phone_number", "password", "password_2")
-        extra_kwargs = {"password": {"write_only": True}}
+        extra_kwargs = {
+            "password": {"write_only": True},
+            "phone_number": {"required": False, "default": "+000000000"},
+        }
 
     def create(self, validated_data):
         validated_data.pop("password_2")
         email = validated_data.pop("email")
         password = validated_data.pop("password")
+        print(validated_data)
         return User.objects.create_user(email, password, **validated_data)
 
     def validate(self, raw_data):
@@ -66,3 +70,4 @@ class UserInfoSerializer(ModelSerializer):
         model = User
         fields = ("email", "first_name", "last_name", "phone_number")
         read_only_fields = ("email",)
+        extra_kwargs = {"phone_number": {"required": False}}

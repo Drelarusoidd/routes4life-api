@@ -3,15 +3,9 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
-from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
-PHONE_NUMBER_VALIDATOR = RegexValidator(
-    r"^[+]?[0-9]{7,15}$",
-    _("Invalid phone number."),
-)
 
 
 class UserManager(BaseUserManager):
@@ -53,12 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
-    phone_number = models.CharField(
-        _("phone number"),
-        max_length=16,
-        blank=False,
-        validators=[PHONE_NUMBER_VALIDATOR],
-    )
+    phone_number = models.CharField(_("phone number"), max_length=16, blank=False)
     email = models.EmailField(unique=True)
     is_staff = models.BooleanField(
         _("staff status"),
@@ -76,7 +65,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["phone_number"]
+    REQUIRED_FIELDS = []
 
     objects = UserManager()
 
