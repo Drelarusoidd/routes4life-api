@@ -1,6 +1,6 @@
 # API Documentation
 
-- ## <span style="color:yellow">**POST**</span> Signup
+- ## <span style="color:orange">**POST**</span> Signup
     **PATH:** `/api/auth/signup/`
     <hr/>
     
@@ -33,7 +33,7 @@
 
 <br/>
 
-- ## <span style="color:yellow">**POST**</span> Login
+- ## <span style="color:orange">**POST**</span> Login
     **PATH:** `/api/auth/get-token/`
     <hr/>
     
