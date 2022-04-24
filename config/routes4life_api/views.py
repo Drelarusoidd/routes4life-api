@@ -14,6 +14,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
     ChangePasswordSerializer,
+    CodeWithEmailSerializer,
+    FindEmailSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UserInfoSerializer,
@@ -83,6 +85,49 @@ def change_my_password(request):
         },
         400,
     )
+
+
+class ForgotPasswordViewSet(viewsets.GenericViewSet):
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == "change_password":
+            return ChangePasswordSerializer
+        elif self.action == "send_reset_code":
+            return CodeWithEmailSerializer
+        else:
+            return FindEmailSerializer
+
+    @action(detail=False, methods=["get"])
+    def send_email(self, request):
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {"success": f"Successfully sent a reset code to {user.email}."}, status=200
+        )
+
+    @action(detail=False, methods=["post"])
+    def send_reset_code(self, request):  # changing
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session_token = serializer.save()
+        return Response(
+            {"sessionToken": f"{session_token}"},
+            status=200,
+        )
+
+    @action(detail=False, methods=["patch"])
+    def change_password(self, request):  # unchanged
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {"success": f"Successfully reset password for {user.email}."}, status=200
+        )
 
 
 class UserInfoViewSet(viewsets.GenericViewSet):

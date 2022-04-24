@@ -1,8 +1,15 @@
+import string
+
+from django.conf import settings
 from django.contrib.auth.hashers import check_password
+from django.contrib.auth.models import BaseUserManager
+from django.core.mail import send_mail
 from rest_framework import serializers
-from rest_framework.serializers import ModelSerializer
+from rest_framework.exceptions import ValidationError
+from rest_framework.serializers import ModelSerializer, Serializer
 
 from .models import User
+from .utils import ResetCodeManager, SessionTokenManager
 
 
 class RegisterUserSerializer(ModelSerializer):
@@ -71,3 +78,53 @@ class UserInfoSerializer(ModelSerializer):
         fields = ("email", "first_name", "last_name", "phone_number")
         read_only_fields = ("email",)
         extra_kwargs = {"phone_number": {"required": False}}
+
+
+class FindEmailSerializer(Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate(self, raw_data):
+        norm_email = BaseUserManager().normalize_email(raw_data["email"])
+        if not User.objects.filter(email=norm_email).exists():
+            raise ValidationError({"email": f"No user {norm_email} was found."})
+        return raw_data
+
+    def save(self, **kwargs):
+        super().save(**kwargs)
+        email = self.validated_data["email"]
+        code_to_send = ResetCodeManager.get_or_create_code(email)
+        send_mail(
+            subject="Reset password code",
+            body=f"Hi there, {email}."
+            + f"Please enter this code to reset your password: {code_to_send}."
+            + "Its TTL is only 2 minutes, so you should hurry!",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        return User.objects.get(email=self.email)
+
+
+class CodeWithEmailSerializer(Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(required=True)
+
+    def validate(self, raw_data):
+        norm_email = BaseUserManager().normalize_email(raw_data["email"])
+        if not User.objects.filter(email=norm_email).exists():
+            raise ValidationError({"email": f"No user {norm_email} was found."})
+        if len(raw_data["code"]) != 4 or not all(
+            [(ch in string.digits) for ch in raw_data["code"]]
+        ):
+            raise ValidationError({"code": "Invalid code provided."})
+        # here, submission code is deleted either way
+        if not ResetCodeManager.try_use_code(norm_email, raw_data["code"]):
+            raise ValidationError({"detail": "Code has expired or it is incorrect."})
+        return raw_data
+
+    def save(self, **kwargs):
+        """Overriden to return password reset session token."""
+        super().save(**kwargs)
+        email = self.validated_data["email"]
+        session_token = SessionTokenManager.get_or_create_token(email)
+        return session_token
