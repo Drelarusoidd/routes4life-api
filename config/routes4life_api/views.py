@@ -13,6 +13,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
+    ChangePasswordForgotSerializer,
     ChangePasswordSerializer,
     CodeWithEmailSerializer,
     FindEmailSerializer,
@@ -92,7 +93,7 @@ class ForgotPasswordViewSet(viewsets.GenericViewSet):
 
     def get_serializer_class(self):
         if self.action == "change_password":
-            return ChangePasswordSerializer
+            return ChangePasswordForgotSerializer
         elif self.action == "send_reset_code":
             return CodeWithEmailSerializer
         else:
@@ -101,7 +102,7 @@ class ForgotPasswordViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=["get"])
     def send_email(self, request):
         serializer_class = self.get_serializer_class()
-        serializer = serializer_class(data=request.data)
+        serializer = serializer_class(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(
@@ -109,24 +110,24 @@ class ForgotPasswordViewSet(viewsets.GenericViewSet):
         )
 
     @action(detail=False, methods=["post"])
-    def send_reset_code(self, request):  # changing
+    def send_reset_code(self, request):
         serializer_class = self.get_serializer_class()
         serializer = serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         session_token = serializer.save()
         return Response(
-            {"sessionToken": f"{session_token}"},
+            {"session_token": f"{session_token}"},
             status=200,
         )
 
     @action(detail=False, methods=["patch"])
-    def change_password(self, request):  # unchanged
+    def change_password(self, request):
         serializer_class = self.get_serializer_class()
-        serializer = serializer_class(data=request.data, partial=True)
+        serializer = serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(
-            {"success": f"Successfully reset password for {user.email}."}, status=200
+            {"success": f"Successfully changed password for {user.email}."}, status=200
         )
 
 

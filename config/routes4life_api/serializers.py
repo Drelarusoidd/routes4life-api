@@ -72,14 +72,42 @@ class ChangePasswordSerializer(ModelSerializer):
         return self.instance
 
 
-class UserInfoSerializer(ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("email", "first_name", "last_name", "phone_number")
-        read_only_fields = ("email",)
-        extra_kwargs = {"phone_number": {"required": False}}
+# untested
+class ChangePasswordForgotSerializer(Serializer):
+    email = serializers.EmailField(required=True)
+    session_token = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True)
+    new_password_2 = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, raw_data):
+        norm_email = BaseUserManager.normalize_email(raw_data["email"])
+        if not User.objects.filter(email=norm_email).exists():
+            raise ValidationError({"email": f"No user {norm_email} was found."})
+        self.instance = User.objects.get(email=norm_email)
+
+        if len(raw_data["session_token"]) != 32 or not all(
+            [
+                (ch in (string.digits + string.ascii_letters))
+                for ch in raw_data["session_token"]
+            ]
+        ):
+            raise ValidationError({"session_token": "Invalid session token provided."})
+        if not SessionTokenManager.try_use_token(norm_email, raw_data["session_token"]):
+            raise ValidationError(
+                {"session_token": "Session token has expired or it is incorrect."}
+            )
+        if raw_data["new_password"] != raw_data["new_password_2"]:
+            raise serializers.ValidationError("New passwords don't match!")
+        return raw_data
+
+    def save(self):
+        # instance will be provided during validation!!!
+        self.instance.set_password(self.validated_data["new_password"])
+        self.instance.save()
+        return self.instance
 
 
+# untested
 class FindEmailSerializer(Serializer):
     email = serializers.EmailField(required=True)
 
@@ -89,28 +117,28 @@ class FindEmailSerializer(Serializer):
             raise ValidationError({"email": f"No user {norm_email} was found."})
         return raw_data
 
-    def save(self, **kwargs):
-        super().save(**kwargs)
+    def save(self):
         email = self.validated_data["email"]
         code_to_send = ResetCodeManager.get_or_create_code(email)
         send_mail(
             subject="Reset password code",
-            body=f"Hi there, {email}."
+            message=f"Hi there, {email}."
             + f"Please enter this code to reset your password: {code_to_send}."
             + "Its TTL is only 2 minutes, so you should hurry!",
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[email],
             fail_silently=True,
         )
-        return User.objects.get(email=self.email)
+        return User.objects.get(email=email)
 
 
+# untested
 class CodeWithEmailSerializer(Serializer):
     email = serializers.EmailField(required=True)
     code = serializers.CharField(required=True)
 
     def validate(self, raw_data):
-        norm_email = BaseUserManager().normalize_email(raw_data["email"])
+        norm_email = BaseUserManager.normalize_email(raw_data["email"])
         if not User.objects.filter(email=norm_email).exists():
             raise ValidationError({"email": f"No user {norm_email} was found."})
         if len(raw_data["code"]) != 4 or not all(
@@ -119,12 +147,19 @@ class CodeWithEmailSerializer(Serializer):
             raise ValidationError({"code": "Invalid code provided."})
         # here, submission code is deleted either way
         if not ResetCodeManager.try_use_code(norm_email, raw_data["code"]):
-            raise ValidationError({"detail": "Code has expired or it is incorrect."})
+            raise ValidationError({"code": "Code has expired or it is incorrect."})
         return raw_data
 
     def save(self, **kwargs):
         """Overriden to return password reset session token."""
-        super().save(**kwargs)
         email = self.validated_data["email"]
         session_token = SessionTokenManager.get_or_create_token(email)
         return session_token
+
+
+class UserInfoSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("email", "first_name", "last_name", "phone_number")
+        read_only_fields = ("email",)
+        extra_kwargs = {"phone_number": {"required": False}}
