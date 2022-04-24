@@ -10,6 +10,7 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
     ChangePasswordSerializer,
@@ -24,6 +25,20 @@ User = get_user_model()
 class RegisterAPIView(CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterUserSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+
+        jwt_response = TokenObtainPairView.as_view()(request=request._request).data
+
+        return Response(
+            {**serializer.data, **jwt_response},
+            status=201,
+            headers=headers,
+        )
 
 
 @api_view(["PATCH"])
