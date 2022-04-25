@@ -172,3 +172,14 @@ def test_change_password(client, user_factory):
         },
     )
     assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_reset_password_flow(client, user_factory):
+    fake = Faker()
+    user = user_factory.create()
+    password = fake.password()
+    new_password = fake.password()
+    user.set_password(password)
+    assert user.check_password(password)
+    user.save()

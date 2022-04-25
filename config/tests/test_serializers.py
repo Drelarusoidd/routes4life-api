@@ -3,11 +3,15 @@ from django.contrib.auth.hashers import check_password
 from faker import Faker
 from routes4life_api.models import User
 from routes4life_api.serializers import (
+    ChangePasswordForgotSerializer,
     ChangePasswordSerializer,
+    CodeWithEmailSerializer,
+    FindEmailSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UserInfoSerializer,
 )
+from routes4life_api.utils import ResetCodeManager, SessionTokenManager
 
 
 @pytest.mark.django_db
@@ -184,3 +188,82 @@ def test_change_password_serializer(user_factory):
         },
     )
     assert serializer.is_valid() is False
+
+
+@pytest.mark.django_db
+def test_password_reset_serializers(user_factory):
+    test_user = user_factory.create()
+    password = "123456789"
+    test_user.set_password(password)
+    assert test_user.check_password(password)
+
+    # Cannot find email
+    serializer1 = FindEmailSerializer(
+        data={
+            "email": "emaildoesnotexist@email.rx",
+        }
+    )
+    assert not serializer1.is_valid()
+    # Must be right
+    serializer1 = FindEmailSerializer(
+        data={
+            "email": test_user.email,
+        }
+    )
+    assert serializer1.is_valid()
+    user_found = serializer1.save()
+    assert user_found == test_user
+
+    code_provided = ResetCodeManager.get_or_create_code(user_found.email)
+    # Try providing wrong code
+    wrong_code = code_provided[:3] + chr((int(code_provided[3]) + 1) % 10)
+    serialezer2 = CodeWithEmailSerializer(
+        data={"email": user_found.email, "code": wrong_code}
+    )
+    assert not serialezer2.is_valid()
+    # Must be right
+    serialezer2 = CodeWithEmailSerializer(
+        data={"email": user_found.email, "code": code_provided}
+    )
+    assert serialezer2.is_valid()
+    session_token = serialezer2.save()
+    assert session_token == SessionTokenManager.get_or_create_token(user_found.email)
+
+    # Try providing wrong session token
+    wrong_token = SessionTokenManager.get_or_create_token("emaildoesnotexist@email.rx")
+    new_password = "new_password"
+    serialezer3 = ChangePasswordForgotSerializer(
+        data={
+            "email": user_found.email,
+            "session_token": wrong_token,
+            "new_password": new_password,
+            "new_password_2": new_password,
+        }
+    )
+    assert not serialezer3.is_valid()
+
+    # Try providing different passwords
+    serialezer3 = ChangePasswordForgotSerializer(
+        data={
+            "email": user_found.email,
+            "session_token": session_token,
+            "new_password": new_password,
+            "new_password_2": new_password + "321",
+        }
+    )
+    assert not serialezer3.is_valid()
+
+    # Must be right
+    serialezer3 = ChangePasswordForgotSerializer(
+        data={
+            "email": user_found.email,
+            "session_token": session_token,
+            "new_password": new_password,
+            "new_password_2": new_password,
+        }
+    )
+    assert serialezer3.is_valid()
+    user_found = serialezer3.save()
+    test_user.refresh_from_db()
+    assert user_found == test_user
+    assert check_password(new_password, test_user.password)
