@@ -1,7 +1,9 @@
 import json
 
 import pytest
+from django.contrib.auth.hashers import check_password
 from faker import Faker
+from routes4life_api.utils import ResetCodeManager
 
 
 @pytest.mark.django_db
@@ -25,6 +27,7 @@ def test_signup(client, user_factory, django_user_model):
     assert (
         response_data["email"] == user.email
         and response_data["phoneNumber"] == user.phone_number
+        and response_data.get("access", None) is not None
     )
 
     # Signup with existing email
@@ -183,3 +186,29 @@ def test_reset_password_flow(client, user_factory):
     user.set_password(password)
     assert user.check_password(password)
     user.save()
+
+    response = client.get(path=f"/api/auth/reset-password/?email={user.email}")
+    assert response.status_code == 200
+    code_received = ResetCodeManager.get_or_create_code(user.email)
+
+    response = client.post(
+        path="/api/auth/reset-password/",
+        data={"email": user.email, "code": code_received},
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    session_token = response_data["sessionToken"]
+
+    response = client.patch(
+        path="/api/auth/reset-password/",
+        data={
+            "email": user.email,
+            "sessionToken": session_token,
+            "newPassword": new_password,
+            "newPassword2": new_password,
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert check_password(new_password, user.password)
