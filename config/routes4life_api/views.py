@@ -10,9 +10,13 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
+    ChangePasswordForgotSerializer,
     ChangePasswordSerializer,
+    CodeWithEmailSerializer,
+    FindEmailSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UserInfoSerializer,
@@ -24,6 +28,20 @@ User = get_user_model()
 class RegisterAPIView(CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterUserSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+
+        jwt_response = TokenObtainPairView.as_view()(request=request._request).data
+
+        return Response(
+            {**serializer.data, **jwt_response},
+            status=201,
+            headers=headers,
+        )
 
 
 @api_view(["PATCH"])
@@ -68,6 +86,49 @@ def change_my_password(request):
         },
         400,
     )
+
+
+class ForgotPasswordViewSet(viewsets.GenericViewSet):
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == "change_password":
+            return ChangePasswordForgotSerializer
+        elif self.action == "send_reset_code":
+            return CodeWithEmailSerializer
+        else:
+            return FindEmailSerializer
+
+    @action(detail=False, methods=["get"])
+    def send_email(self, request):
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {"success": f"Successfully sent a reset code to {user.email}."}, status=200
+        )
+
+    @action(detail=False, methods=["post"])
+    def send_reset_code(self, request):
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session_token = serializer.save()
+        return Response(
+            {"session_token": f"{session_token}"},
+            status=200,
+        )
+
+    @action(detail=False, methods=["patch"])
+    def change_password(self, request):
+        serializer_class = self.get_serializer_class()
+        serializer = serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {"success": f"Successfully changed password for {user.email}."}, status=200
+        )
 
 
 class UserInfoViewSet(viewsets.GenericViewSet):
