@@ -18,15 +18,16 @@ from decouple import Config, RepositoryEnv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Take environment variables from .env file
-env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env"))
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_config.get("DEBUG", default=False, cast=bool)
+DEBUG = os.environ.get("DEBUG")
+if DEBUG:
+    env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env"))
+else:
+    env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env_prod"))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env_config.get("SECRET_KEY")
