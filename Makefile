@@ -1,8 +1,8 @@
 build:
-	docker-compose build --build-arg UNAME=$$(whoami) \
+	docker-compose build --build-arg UNAME=$$(whoami) --progress=plain\
 		--build-arg UID=$$(id -u) --build-arg GID=$$(id -g)
 rebuild:
-	docker rmi routes4life-api_api && docker-compose build \
+	docker rmi routes4life-api_api && docker-compose build --progress=plain\
 		--build-arg UNAME=$$(whoami) --build-arg UID=$$(id -u) \
 		--build-arg GID=$$(id -g)
 run:

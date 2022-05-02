@@ -72,7 +72,6 @@ class ChangePasswordSerializer(ModelSerializer):
         return self.instance
 
 
-# untested
 class ChangePasswordForgotSerializer(Serializer):
     email = serializers.EmailField(required=True)
     session_token = serializers.CharField(write_only=True, required=True)
@@ -92,12 +91,12 @@ class ChangePasswordForgotSerializer(Serializer):
             ]
         ):
             raise ValidationError({"session_token": "Invalid session token provided."})
+        if raw_data["new_password"] != raw_data["new_password_2"]:
+            raise serializers.ValidationError("New passwords don't match!")
         if not SessionTokenManager.try_use_token(norm_email, raw_data["session_token"]):
             raise ValidationError(
                 {"session_token": "Session token has expired or it is incorrect."}
             )
-        if raw_data["new_password"] != raw_data["new_password_2"]:
-            raise serializers.ValidationError("New passwords don't match!")
         return raw_data
 
     def save(self):
@@ -107,7 +106,6 @@ class ChangePasswordForgotSerializer(Serializer):
         return self.instance
 
 
-# untested
 class FindEmailSerializer(Serializer):
     email = serializers.EmailField(required=True)
 
@@ -132,7 +130,6 @@ class FindEmailSerializer(Serializer):
         return User.objects.get(email=email)
 
 
-# untested
 class CodeWithEmailSerializer(Serializer):
     email = serializers.EmailField(required=True)
     code = serializers.CharField(required=True)
@@ -145,7 +142,6 @@ class CodeWithEmailSerializer(Serializer):
             [(ch in string.digits) for ch in raw_data["code"]]
         ):
             raise ValidationError({"code": "Invalid code provided."})
-        # here, submission code is deleted either way
         if not ResetCodeManager.try_use_code(norm_email, raw_data["code"]):
             raise ValidationError({"code": "Code has expired or it is incorrect."})
         return raw_data
