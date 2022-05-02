@@ -7,7 +7,7 @@ services:
     ports:
       - 80:8000
     env_file:
-      - .env
+      - .env_prod
     stdin_open: true
     tty: true
     depends_on:
@@ -18,7 +18,7 @@ services:
     ports:
       - 8001:5432
     env_file:
-      - .env
+      - .env_prod
     volumes:
       - pgdata:/var/lib/postgresql/data
 

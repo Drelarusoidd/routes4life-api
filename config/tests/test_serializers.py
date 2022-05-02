@@ -232,7 +232,7 @@ def test_password_reset_serializers(user_factory):
     # Try providing wrong session token
     wrong_token = SessionTokenManager.get_or_create_token("emaildoesnotexist@email.rx")
     new_password = "new_password"
-    serialezer3 = ChangePasswordForgotSerializer(
+    serializer3 = ChangePasswordForgotSerializer(
         data={
             "email": user_found.email,
             "session_token": wrong_token,
@@ -240,10 +240,10 @@ def test_password_reset_serializers(user_factory):
             "new_password_2": new_password,
         }
     )
-    assert not serialezer3.is_valid()
+    assert not serializer3.is_valid()
 
     # Try providing different passwords
-    serialezer3 = ChangePasswordForgotSerializer(
+    serializer3 = ChangePasswordForgotSerializer(
         data={
             "email": user_found.email,
             "session_token": session_token,
@@ -251,10 +251,10 @@ def test_password_reset_serializers(user_factory):
             "new_password_2": new_password + "321",
         }
     )
-    assert not serialezer3.is_valid()
+    assert not serializer3.is_valid()
 
     # Must be right
-    serialezer3 = ChangePasswordForgotSerializer(
+    serializer3 = ChangePasswordForgotSerializer(
         data={
             "email": user_found.email,
             "session_token": session_token,
@@ -262,8 +262,8 @@ def test_password_reset_serializers(user_factory):
             "new_password_2": new_password,
         }
     )
-    assert serialezer3.is_valid()
-    user_found = serialezer3.save()
+    assert serializer3.is_valid()
+    user_found = serializer3.save()
     test_user.refresh_from_db()
     assert user_found == test_user
     assert check_password(new_password, test_user.password)
