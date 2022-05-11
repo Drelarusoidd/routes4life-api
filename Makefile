@@ -10,7 +10,8 @@ run:
 stop:
 	docker-compose down
 test:
-	docker-compose -f docker-compose-test.yml run api python -m pytest && docker-compose down
+	docker-compose -f docker-compose-test.yml run api python -m pytest;\
+	docker-compose -f docker-compose-test.yml down
 lint:
 	pre-commit run --all-files
 build-testimage:

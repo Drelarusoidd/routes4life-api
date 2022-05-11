@@ -71,14 +71,14 @@ def change_my_email(request):
 @permission_classes([IsAuthenticated])
 def change_my_password(request):
     old_passwd = request.data.get("password")
-    new_passwd = request.data.get("new_password")
-    new_passwd2 = request.data.get("new_password_2")
+    new_password = request.data.get("new_password")
+    confirmation_password = request.data.get("confirmation_password")
     serializer = ChangePasswordSerializer(
         request.user,
         {
             "password": old_passwd,
-            "new_password": new_passwd,
-            "new_password_2": new_passwd2,
+            "new_password": new_password,
+            "confirmation_password": confirmation_password,
         },
         partial=True,
     )

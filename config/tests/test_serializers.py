@@ -23,7 +23,7 @@ def test_register_user_serializer(user_factory):
             "email": user_data.email,
             "phone_number": user_data.phone_number,
             "password": password,
-            "password_2": password,
+            "confirmation_password": password,
         }
     )
     assert serializer.is_valid()
@@ -39,7 +39,7 @@ def test_register_user_serializer(user_factory):
             "email": user_data.email,
             "phone_number": "  ",
             "password": password,
-            "password_2": password,
+            "confirmation_password": password,
         }
     )
     assert serializer.is_valid() is False
@@ -49,7 +49,7 @@ def test_register_user_serializer(user_factory):
         data={
             "email": user_data.email,
             "password": password,
-            "password_2": password,
+            "confirmation_password": password,
         }
     )
     assert serializer.is_valid()
@@ -145,7 +145,7 @@ def test_change_password_serializer(user_factory):
         data={
             "password": password,
             "new_password": new_password,
-            "new_password_2": new_password,
+            "confirmation_password": new_password,
         },
     )
     assert serializer.is_valid()
@@ -159,20 +159,20 @@ def test_change_password_serializer(user_factory):
         data={
             "password": password,
             "new_password": new_password,
-            "new_password_2": new_password,
+            "confirmation_password": new_password,
         },
     )
     assert serializer.is_valid() is False
 
     # Check for not matching passwords
     new_password = "234567890"
-    new_password_2 = "123456789"
+    confirmation_password = "123456789"
     serializer = ChangePasswordSerializer(
         instance=test_user,
         data={
             "password": password,
             "new_password": new_password,
-            "new_password_2": new_password_2,
+            "confirmation_password": confirmation_password,
         },
     )
     assert serializer.is_valid() is False
@@ -184,7 +184,7 @@ def test_change_password_serializer(user_factory):
         data={
             "password": "definetly_not_a_password",
             "new_password": new_password,
-            "new_password_2": new_password_2,
+            "confirmation_password": confirmation_password,
         },
     )
     assert serializer.is_valid() is False
@@ -237,7 +237,7 @@ def test_password_reset_serializers(user_factory):
             "email": user_found.email,
             "session_token": wrong_token,
             "new_password": new_password,
-            "new_password_2": new_password,
+            "confirmation_password": new_password,
         }
     )
     assert not serializer3.is_valid()
@@ -248,7 +248,7 @@ def test_password_reset_serializers(user_factory):
             "email": user_found.email,
             "session_token": session_token,
             "new_password": new_password,
-            "new_password_2": new_password + "321",
+            "confirmation_password": new_password + "321",
         }
     )
     assert not serializer3.is_valid()
@@ -259,7 +259,7 @@ def test_password_reset_serializers(user_factory):
             "email": user_found.email,
             "session_token": session_token,
             "new_password": new_password,
-            "new_password_2": new_password,
+            "confirmation_password": new_password,
         }
     )
     assert serializer3.is_valid()
