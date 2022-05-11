@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG")
 if DEBUG is None:
-    DEBUG = False
+    DEBUG = True
 
 if DEBUG:
     env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env"))
