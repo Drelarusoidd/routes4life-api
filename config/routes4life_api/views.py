@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.test import Client
 from rest_framework import viewsets
 from rest_framework.decorators import (
     action,
@@ -10,7 +11,6 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
     ChangePasswordForgotSerializer,
@@ -35,7 +35,14 @@ class RegisterAPIView(CreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        jwt_response = TokenObtainPairView.as_view()(request=request._request).data
+        client = Client()
+        jwt_response = client.post(
+            path="/api/auth/get-token/",
+            data={
+                "email": serializer.data["email"],
+                "password": request.data["password"],
+            },
+        ).json()
 
         return Response(
             {**serializer.data, **jwt_response},
