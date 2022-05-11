@@ -13,25 +13,25 @@ from .utils import ResetCodeManager, SessionTokenManager
 
 
 class RegisterUserSerializer(ModelSerializer):
-    password_2 = serializers.CharField(write_only=True)
+    confirmation_password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ("email", "phone_number", "password", "password_2")
+        fields = ("email", "phone_number", "password", "confirmation_password")
         extra_kwargs = {
             "password": {"write_only": True},
             "phone_number": {"required": False, "default": "+000000000"},
         }
 
     def create(self, validated_data):
-        validated_data.pop("password_2")
+        validated_data.pop("confirmation_password")
         email = validated_data.pop("email")
         password = validated_data.pop("password")
         print(validated_data)
         return User.objects.create_user(email, password, **validated_data)
 
     def validate(self, raw_data):
-        if raw_data["password"] != raw_data["password_2"]:
+        if raw_data["password"] != raw_data["confirmation_password"]:
             raise serializers.ValidationError("Passwords don't match!")
         return raw_data
 
@@ -48,11 +48,11 @@ class UpdateEmailSerializer(ModelSerializer):
 
 class ChangePasswordSerializer(ModelSerializer):
     new_password = serializers.CharField(write_only=True)
-    new_password_2 = serializers.CharField(write_only=True)
+    confirmation_password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ("password", "new_password", "new_password_2")
+        fields = ("password", "new_password", "confirmation_password")
         extra_kwargs = {"password": {"write_only": True}}
 
     def __init__(self, *args, **kwargs):
@@ -62,7 +62,7 @@ class ChangePasswordSerializer(ModelSerializer):
     def validate(self, raw_data):
         if check_password(raw_data["password"], self.instance.password) is False:
             raise serializers.ValidationError("Old password is incorrect!")
-        if raw_data["new_password"] != raw_data["new_password_2"]:
+        if raw_data["new_password"] != raw_data["confirmation_password"]:
             raise serializers.ValidationError("New passwords don't match!")
         return raw_data
 
@@ -76,7 +76,7 @@ class ChangePasswordForgotSerializer(Serializer):
     email = serializers.EmailField(required=True)
     session_token = serializers.CharField(write_only=True, required=True)
     new_password = serializers.CharField(write_only=True, required=True)
-    new_password_2 = serializers.CharField(write_only=True, required=True)
+    confirmation_password = serializers.CharField(write_only=True, required=True)
 
     def validate(self, raw_data):
         norm_email = BaseUserManager.normalize_email(raw_data["email"])
@@ -91,7 +91,7 @@ class ChangePasswordForgotSerializer(Serializer):
             ]
         ):
             raise ValidationError({"session_token": "Invalid session token provided."})
-        if raw_data["new_password"] != raw_data["new_password_2"]:
+        if raw_data["new_password"] != raw_data["confirmation_password"]:
             raise serializers.ValidationError("New passwords don't match!")
         if not SessionTokenManager.try_use_token(norm_email, raw_data["session_token"]):
             raise ValidationError(

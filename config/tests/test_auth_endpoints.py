@@ -15,9 +15,9 @@ def test_signup(client, user_factory, django_user_model):
         path="/api/auth/signup/",
         data={
             "email": user_data.email,
-            "phone_number": user_data.phone_number,
+            "phoneNumber": user_data.phone_number,
             "password": password,
-            "password_2": password,
+            "confirmationPassword": password,
         },
     )
     assert response.status_code == 201
@@ -36,9 +36,9 @@ def test_signup(client, user_factory, django_user_model):
         path="/api/auth/signup/",
         data={
             "email": user_data.email,
-            "phone_number": fake.msisdn(),
+            "phoneNumber": fake.msisdn(),
             "password": password,
-            "password_2": password,
+            "confirmation_password": password,
         },
     )
     assert response.status_code == 400
@@ -138,7 +138,7 @@ def test_change_password(client, user_factory):
         data={
             "password": password,
             "newPassword": new_password,
-            "newPassword2": new_password,
+            "confirmationPassword": new_password,
         },
     )
     assert response.status_code == 401
@@ -149,7 +149,7 @@ def test_change_password(client, user_factory):
         data={
             "password": password,
             "newPassword": new_password,
-            "newPassword2": new_password,
+            "confirmationPassword": new_password,
         },
         content_type="application/json",
         **{
@@ -167,7 +167,7 @@ def test_change_password(client, user_factory):
         data={
             "password": password,
             "newPassword": new_password + "nonmatch",
-            "newPassword2": new_password,
+            "confirmationPassword": new_password,
         },
         content_type="application/json",
         **{
@@ -205,7 +205,7 @@ def test_reset_password_flow(client, user_factory):
             "email": user.email,
             "sessionToken": session_token,
             "newPassword": new_password,
-            "newPassword2": new_password,
+            "confirmationPassword": new_password,
         },
         content_type="application/json",
     )

@@ -13,7 +13,7 @@ services:
     stdin_open: true
     tty: true
     depends_on:
-      - db
+      - redis_cache
     
   db:
     image: postgres
@@ -28,7 +28,7 @@ services:
     image: redis:7.0.0
     entrypoint: ["bash", "-c", "redis-server", "--daemonize", "yes"]
     ports:
-      - 6739:6739
+      - 6379:6379
     depends_on:
       - db
 

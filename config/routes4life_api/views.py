@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.test import Client
 from rest_framework import viewsets
 from rest_framework.decorators import (
     action,
@@ -10,7 +11,6 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
     ChangePasswordForgotSerializer,
@@ -35,7 +35,14 @@ class RegisterAPIView(CreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        jwt_response = TokenObtainPairView.as_view()(request=request._request).data
+        client = Client()
+        jwt_response = client.post(
+            path="/api/auth/get-token/",
+            data={
+                "email": serializer.data["email"],
+                "password": request.data["password"],
+            },
+        ).json()
 
         return Response(
             {**serializer.data, **jwt_response},
@@ -64,14 +71,14 @@ def change_my_email(request):
 @permission_classes([IsAuthenticated])
 def change_my_password(request):
     old_passwd = request.data.get("password")
-    new_passwd = request.data.get("new_password")
-    new_passwd2 = request.data.get("new_password_2")
+    new_password = request.data.get("new_password")
+    confirmation_password = request.data.get("confirmation_password")
     serializer = ChangePasswordSerializer(
         request.user,
         {
             "password": old_passwd,
-            "new_password": new_passwd,
-            "new_password_2": new_passwd2,
+            "new_password": new_password,
+            "confirmation_password": confirmation_password,
         },
         partial=True,
     )
