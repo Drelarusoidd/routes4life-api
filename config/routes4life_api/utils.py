@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.utils import timezone
+from rest_framework.views import exception_handler
 
 User = get_user_model()
 
@@ -47,8 +47,21 @@ class SessionTokenManager:
     @classmethod
     def try_use_token(cls, email: str, token: str) -> bool:
         key = email + "__token"
-        tk = cache.get(key)
         if cache.get(key) != token:
             return False
         cache.delete(key)
         return True
+
+
+def custom_exception_handler(exc, context):
+    response = exception_handler(exc, context)
+    if response is not None:
+        newdata = dict()
+        newdata["errors"] = []
+        for err in response.data.values():
+            if isinstance(err, (list, tuple)):
+                newdata["errors"].extend(err)
+            else:
+                newdata["errors"].append(err)
+        response.data = newdata
+    return response

@@ -115,6 +115,7 @@ REST_FRAMEWORK = {
         "djangorestframework_camel_case.parser.CamelCaseJSONParser",
         # Any other parsers
     ),
+    "EXCEPTION_HANDLER": "routes4life_api.utils.custom_exception_handler",
 }
 
 SIMPLE_JWT = {
