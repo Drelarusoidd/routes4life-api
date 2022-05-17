@@ -4,7 +4,6 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.utils import timezone
 
 User = get_user_model()
 
@@ -47,7 +46,7 @@ class SessionTokenManager:
     @classmethod
     def try_use_token(cls, email: str, token: str) -> bool:
         key = email + "__token"
-        tk = cache.get(key)
+        token = cache.get(key)
         if cache.get(key) != token:
             return False
         cache.delete(key)
