@@ -217,16 +217,16 @@ def test_password_reset_serializers(user_factory):
     code_provided = ResetCodeManager.get_or_create_code(user_found.email)
     # Try providing wrong code
     wrong_code = code_provided[:3] + chr((int(code_provided[3]) + 1) % 10)
-    serialezer2 = CodeWithEmailSerializer(
+    serializer2 = CodeWithEmailSerializer(
         data={"email": user_found.email, "code": wrong_code}
     )
-    assert not serialezer2.is_valid()
+    assert not serializer2.is_valid()
     # Must be right
-    serialezer2 = CodeWithEmailSerializer(
+    serializer2 = CodeWithEmailSerializer(
         data={"email": user_found.email, "code": code_provided}
     )
-    assert serialezer2.is_valid()
-    session_token = serialezer2.save()
+    assert serializer2.is_valid()
+    session_token = serializer2.save()
     assert session_token == SessionTokenManager.get_or_create_token(user_found.email)
 
     # Try providing wrong session token

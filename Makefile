@@ -7,8 +7,14 @@ rebuild:
 		--build-arg GID=$$(id -g)
 run:
 	docker-compose up -d
+run-local:
+	docker-compose -f docker-compose-test.yml up -d;\
+	docker exec --tty $$(docker-compose -f docker-compose-test.yml ps -q api) \
+		python -m gunicorn --bind 0.0.0.0:8000 --workers 4 config.wsgi:application &
 stop:
 	docker-compose down
+stop-local:
+	docker-compose -f docker-compose-test.yml down
 test:
 	docker-compose -f docker-compose-test.yml run api python -m pytest;\
 	docker-compose -f docker-compose-test.yml down
