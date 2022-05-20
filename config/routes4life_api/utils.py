@@ -1,12 +1,12 @@
+import os
 import random
 import string
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.cache import cache
+from django.utils import dateformat, timezone
 from rest_framework.views import exception_handler
-
-User = get_user_model()
 
 
 class ResetCodeManager:
@@ -65,3 +65,10 @@ def custom_exception_handler(exc, context):
                 newdata["errors"].append(err)
         response.data = newdata
     return response
+
+
+def upload_avatar_to(instance, filename):
+    return (
+        f"{settings.UPLOAD_ROOT}/{dateformat.format(timezone.now(), 'Y-m-d_H:i:s.u')}"
+        + f"/avatar{os.path.splitext(filename)[1]}"
+    )

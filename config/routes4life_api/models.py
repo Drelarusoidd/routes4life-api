@@ -7,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from .utils import upload_avatar_to
+
 
 class UserManager(BaseUserManager):
     """Define a model manager for User model with no username field."""
@@ -63,11 +65,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         ),
     )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
+    avatar = models.ImageField(upload_to=upload_avatar_to, blank=True, null=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     objects = UserManager()
+
+    def save(self, *args, **kwargs):
+        try:
+            old_inst = User.objects.get(id=self.id)
+            if old_inst.avatar != self.avatar:
+                old_inst.avatar.delete()
+        except User.DoesNotExist:
+            pass
+        super(User, self).save(*args, **kwargs)
+
+    def delete(self):
+        self.avatar.delete()
+        return super().delete()
 
     def clean(self):
         super().clean()

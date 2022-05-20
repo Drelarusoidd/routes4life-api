@@ -8,6 +8,7 @@ from rest_framework.decorators import (
     permission_classes,
 )
 from rest_framework.generics import CreateAPIView
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -142,6 +143,7 @@ class UserInfoViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     serializer_class = UserInfoSerializer
     permission_classes = (IsAuthenticated,)
+    parser_classes = [FormParser, JSONParser, MultiPartParser]
 
     @action(detail=False, methods=["get"])
     def get_current(self, request):
