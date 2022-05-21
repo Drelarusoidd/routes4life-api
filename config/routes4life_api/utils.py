@@ -5,7 +5,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.cache import cache
-from django.utils import dateformat, timezone
 from rest_framework.views import exception_handler
 
 
@@ -69,6 +68,6 @@ def custom_exception_handler(exc, context):
 
 def upload_avatar_to(instance, filename):
     return (
-        f"{settings.UPLOAD_ROOT}/{dateformat.format(timezone.now(), 'Y-m-d_H:i:s.u')}"
+        f"{settings.UPLOAD_ROOT}/{instance.email.replace('@', 'AT')}"
         + f"/avatar{os.path.splitext(filename)[1]}"
     )
