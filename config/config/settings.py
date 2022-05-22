@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework.authtoken",
+    "storages",
 ]
 
 AUTH_USER_MODEL = "routes4life_api.User"
@@ -218,3 +219,21 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = env_config.get("EMAIL_HOST_USER")
 
 EMAIL_HOST_PASSWORD = env_config.get("EMAIL_HOST_PASSWORD")
+
+
+# Media files upload
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+AWS_S3_ACCESS_KEY_ID = env_config.get("AWS_S3_ACCESS_KEY_ID")
+
+AWS_S3_SECRET_ACCESS_KEY = env_config.get("AWS_S3_SECRET_ACCESS_KEY")
+
+AWS_STORAGE_BUCKET_NAME = env_config.get("AWS_STORAGE_BUCKET_NAME")
+
+AWS_QUERYSTRING_AUTH = False
+
+AWS_S3_FILE_OVERWRITE = True
+
+AWS_DEFAULT_ACL = None
+
+UPLOAD_ROOT = env_config.get("UPLOAD_ROOT")

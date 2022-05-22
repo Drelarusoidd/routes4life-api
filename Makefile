@@ -11,6 +11,7 @@ run-local:
 	docker-compose -f docker-compose-test.yml up -d;\
 	docker exec --tty $$(docker-compose -f docker-compose-test.yml ps -q api) \
 		python -m gunicorn --bind 0.0.0.0:8000 --workers 4 config.wsgi:application &
+		# python manage.py runserver
 stop:
 	docker-compose down
 stop-local:

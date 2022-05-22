@@ -4,8 +4,11 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.db import models
+from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+from .utils import upload_avatar_to
 
 
 class UserManager(BaseUserManager):
@@ -63,6 +66,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ),
     )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
+    avatar = models.ImageField(upload_to=upload_avatar_to, blank=True, null=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -72,3 +76,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     def clean(self):
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email)
+
+
+@receiver(models.signals.post_delete, sender=User)
+def remove_avatar_on_delete(sender, instance, using, **kwargs):
+    if instance.avatar is not None:
+        instance.avatar.delete(save=False)
+    return True
+
+
+@receiver(models.signals.pre_save, sender=User)
+def remove_avatar_on_change(sender, instance, update_fields, **kwargs):
+    if not instance.pk:
+        return False
+
+    try:
+        old_inst = User.objects.get(pk=instance.pk)
+    except User.DoesNotExist:
+        return False
+
+    if old_inst.avatar is not None:
+        old_inst.avatar.delete(save=False)
+    return True

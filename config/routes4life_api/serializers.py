@@ -156,6 +156,6 @@ class CodeWithEmailSerializer(Serializer):
 class UserInfoSerializer(ModelSerializer):
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "phone_number")
+        fields = ("email", "first_name", "last_name", "phone_number", "avatar")
         read_only_fields = ("email",)
         extra_kwargs = {"phone_number": {"required": False}}
