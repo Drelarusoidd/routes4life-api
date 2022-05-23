@@ -7,6 +7,7 @@ from .views import (
     UserInfoViewSet,
     change_my_email,
     change_my_password,
+    homepage,
 )
 
 urlpatterns = [
@@ -36,4 +37,5 @@ urlpatterns = [
         ),
         name="user_settings",
     ),
+    path("homepage/", homepage, name="homepage"),
 ]

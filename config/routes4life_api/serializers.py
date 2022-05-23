@@ -159,3 +159,13 @@ class UserInfoSerializer(ModelSerializer):
         fields = ("email", "first_name", "last_name", "phone_number", "avatar")
         read_only_fields = ("email",)
         extra_kwargs = {"phone_number": {"required": False}}
+
+
+class LocationSerializer(Serializer):
+    location = serializers.DictField(child=serializers.DecimalField(20, 15))
+
+    def validate(self, raw_data):
+        inner_keys = raw_data["location"].keys()
+        if "latitude" not in inner_keys and "longitude" not in inner_keys:
+            raise ValidationError("You must provide latitude and longitude fields.")
+        return raw_data

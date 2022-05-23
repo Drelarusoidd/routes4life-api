@@ -17,6 +17,7 @@ from .serializers import (
     ChangePasswordSerializer,
     CodeWithEmailSerializer,
     FindEmailSerializer,
+    LocationSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UserInfoSerializer,
@@ -161,3 +162,81 @@ class UserInfoViewSet(viewsets.GenericViewSet):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, 200)
+
+
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def homepage(request):
+    location_serializer = LocationSerializer(data=request.data)
+    location_serializer.is_valid(raise_exception=True)
+
+    client = Client()
+    user_data = client.get(
+        path="/api/users/settings/",
+        **{
+            "HTTP_AUTHORIZATION": request.META["HTTP_AUTHORIZATION"],
+        },
+    ).json()
+
+    return Response(
+        {
+            **user_data,
+            "places": [
+                {
+                    "name": "Tesla Bar",
+                    "title": "Tesla Bar",
+                    "address": "Zybitskaya st., 6",
+                    "rating": 4.12,
+                    "city": "Minsk",
+                    "category": "Bar",
+                    "description": "Just a regular bar, nothing special.",
+                    "location": {
+                        "latitude": 53.90631212153169,
+                        "longitude": 27.5577447932532,
+                    },
+                    "images": [
+                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/bar-secondary1.jpg",
+                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/bar-secondary2.jpg",
+                    ],
+                    "mainImage": "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/bar-main.jpg",
+                },
+                {
+                    "name": "Edo Japan",
+                    "title": "Edo Japan",
+                    "address": "1067 I-30 Frontage Rd #109, Rockwall, TX 75087, USA, Texas",
+                    "rating": 3.8,
+                    "city": "Mobil City",
+                    "category": "Restaurant",
+                    "description": "Just a regular foodcort, nothing special.",
+                    "location": {
+                        "latitude": 33.690417515989516,
+                        "longitude": -96.42122490888232,
+                    },
+                    "images": [
+                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/foodcort-secondary1.jpg",
+                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/foodcort-secondary2.jpg",
+                    ],
+                    "mainImage": "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/foodcort-main.png",
+                },
+                {
+                    "name": "GYM Express",
+                    "title": "GYM Express",
+                    "address": "Pobediteley ave., 84",
+                    "rating": 4.56,
+                    "city": "Minsk",
+                    "category": "Gym",
+                    "description": "Just a regular gym, nothing special.",
+                    "location": {
+                        "latitude": 53.93817828637732,
+                        "longitude": 27.48793170027158,
+                    },
+                    "images": [
+                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/gym-secondary1.jpg",
+                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/gym-secondary2.jpeg",
+                    ],
+                    "mainImage": "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/gym-main.jpg",
+                },
+            ],
+        }
+    )
