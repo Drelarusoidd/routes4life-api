@@ -83,18 +83,3 @@ def remove_avatar_on_delete(sender, instance, using, **kwargs):
     if instance.avatar is not None:
         instance.avatar.delete(save=False)
     return True
-
-
-@receiver(models.signals.pre_save, sender=User)
-def remove_avatar_on_change(sender, instance, update_fields, **kwargs):
-    if not instance.pk:
-        return False
-
-    try:
-        old_inst = User.objects.get(pk=instance.pk)
-    except User.DoesNotExist:
-        return False
-
-    if old_inst.avatar is not None:
-        old_inst.avatar.delete(save=False)
-    return True

@@ -160,6 +160,14 @@ class UserInfoSerializer(ModelSerializer):
         read_only_fields = ("email",)
         extra_kwargs = {"phone_number": {"required": False}}
 
+    def save(self, **kwargs):
+        try:
+            if self.validated_data["avatar"] is None:
+                self.instance.avatar.delete(save=False)
+        except KeyError:
+            pass
+        super().save(**kwargs)
+
 
 class LocationSerializer(Serializer):
     location = serializers.DictField(child=serializers.DecimalField(20, 15))
