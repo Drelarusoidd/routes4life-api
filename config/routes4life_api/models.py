@@ -3,7 +3,7 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
-from django.db import models
+from django.contrib.gis.db import models
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -11,6 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from .utils import upload_avatar_to
 
 
+# MODELS
 class UserManager(BaseUserManager):
     """Define a model manager for User model with no username field."""
 
@@ -78,6 +79,23 @@ class User(AbstractBaseUser, PermissionsMixin):
         self.email = self.__class__.objects.normalize_email(self.email)
 
 
+class Place(models.Model):
+    added_by = models.ForeignKey(to=User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, blank=False)
+    category = models.CharField(max_length=100, blank=False)
+    rating = models.DecimalField(max_digits=3, decimal_places=2)
+    description = models.TextField(blank=True)
+    address = models.CharField(max_length=200)
+    location = models.PointField()
+    main_image = models.ImageField(blank=True, null=True)
+
+
+class PlaceImages(models.Model):
+    place = models.ForeignKey(to=Place, on_delete=models.CASCADE)
+    image = models.ImageField(blank=True, null=True)
+
+
+# SIGNAL RECEIVERS
 @receiver(models.signals.post_delete, sender=User)
 def remove_avatar_on_delete(sender, instance, using, **kwargs):
     if instance.avatar is not None:
