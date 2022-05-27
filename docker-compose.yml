@@ -14,7 +14,9 @@ services:
       - db
     
   db:
-    image: postgres
+    build:
+      dockerfile: Dockerfile_db
+      context: .
     ports:
       - 8001:5432
     env_file:
