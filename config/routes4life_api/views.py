@@ -11,6 +11,7 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .serializers import (
     ChangePasswordForgotSerializer,
@@ -36,17 +37,12 @@ class RegisterAPIView(CreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        client = Client()
-        jwt_response = client.post(
-            path="/api/auth/get-token/",
-            data={
-                "email": serializer.data["email"],
-                "password": request.data["password"],
-            },
-        ).json()
+        user = serializer.instance
+        access_token = str(AccessToken.for_user(user))
+        refresh_token = str(RefreshToken.for_user(user))
 
         return Response(
-            {**serializer.data, **jwt_response},
+            {**serializer.data, "access": access_token, "refresh": refresh_token},
             status=201,
             headers=headers,
         )

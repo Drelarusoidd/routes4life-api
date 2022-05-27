@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # geo Django
+    "django.contrib.gis",
     # our app
     "routes4life_api.apps.Routes4LifeApiConfig",
     # 3d party apps
@@ -54,6 +56,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework.authtoken",
     "storages",
+    # REST GIS
+    "rest_framework_gis",
 ]
 
 AUTH_USER_MODEL = "routes4life_api.User"
@@ -144,7 +148,7 @@ SIMPLE_JWT = {
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django.contrib.gis.db.backends.postgis",
         "NAME": env_config.get("POSTGRES_NAME"),
         "USER": env_config.get("POSTGRES_USER"),
         "PASSWORD": env_config.get("POSTGRES_PASSWORD"),
