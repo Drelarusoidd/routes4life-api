@@ -25,7 +25,7 @@ RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt buster-pgdg main" >
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt -y update
 
-# PostgreSQL-14 + postGIS extension for v14
+# PostgreSQL-14 client, server, contrib, etc.
 RUN apt -y install postgresql-14
 
 # Necessary libs for GDAL, GEOS and PROJ
@@ -47,5 +47,4 @@ RUN poetry show --tree
 
 # Creating folders, and files for a project:
 COPY . /code/
-
 WORKDIR /code/config
