@@ -3,7 +3,7 @@ import random
 import string
 from datetime import timedelta
 
-from django.conf import settings
+# from django.conf import settings
 from django.core.cache import cache
 from rest_framework.views import exception_handler
 
@@ -68,6 +68,7 @@ def custom_exception_handler(exc, context):
 
 def upload_avatar_to(instance, filename):
     return (
-        f"{settings.UPLOAD_ROOT}/{instance.email.replace('@', 'AT')}"
+        # f"{settings.UPLOAD_ROOT}/{instance.email.replace('@', 'AT')}"
+        f"{instance.email.replace('@', 'AT')}"
         + f"/avatar{os.path.splitext(filename)[1]}"
     )

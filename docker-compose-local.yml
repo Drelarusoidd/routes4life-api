@@ -1,9 +1,7 @@
 version: "3.9"
 services:
   api:
-    build: 
-      dockerfile: Dockerfile_test
-      context: .
+    image: flawlesse/routes4life_api_local:latest
     volumes:
       - proj_files:/code
       - media:/media
@@ -17,9 +15,7 @@ services:
       - redis_cache
     
   db:
-    build:
-      dockerfile: Dockerfile_db
-      context: .
+    image: flawlesse/routes4life_db_local:latest
     ports:
       - 8001:5432
     env_file:
