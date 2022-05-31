@@ -22,4 +22,26 @@ lint:
 	pre-commit run --all-files
 build-testimage:
 	docker-compose -f docker-compose-test.yml build --build-arg UNAME=$$(whoami) \
-		--build-arg UID=$$(id -u) --build-arg GID=$$(id -g) 
+		--build-arg UID=$$(id -u) --build-arg GID=$$(id -g)
+
+# push actual versions to DockerHub
+push-api:
+	docker build \
+		--build-arg UNAME=$$(whoami) \
+		--build-arg UID=$$(id -u) \
+		--build-arg GID=$$(id -g) \
+		-t flawlesse/routes4life_api_local:latest .;\
+	docker push flawlesse/routes4life_api_local:latest
+
+push-db:
+	docker build -f Dockerfile_db . -t flawlesse/routes4life_db_local:latest;\
+	docker push flawlesse/routes4life_db_local:latest
+
+
+# FOR MOBILE DEVS
+run-local-server:
+	docker-compose -f docker-compose-local.yml up -d
+stop-local-server:
+	docker-compose -f docker-compose-local.yml down
+migrate:
+	docker exec --tty $$(docker-compose -f docker-compose-local.yml ps -q api) python manage.py migrate

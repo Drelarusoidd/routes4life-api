@@ -36,8 +36,10 @@ RUN apt-get update \
     && apt-get install -y binutils libproj-dev gdal-bin python-gdal python3-gdal
 
 # Copy only requirements to cache them in docker layer
+WORKDIR /media
+RUN chown $UID:$GID .
+RUN chmod 777 .
 WORKDIR /code
-RUN chown $USER_ID:$GROUP_ID .
 USER $UNAME
 COPY poetry.lock pyproject.toml /code/
 
@@ -47,6 +49,10 @@ RUN poetry show --tree
 
 # Creating folders, and files for a project:
 COPY . /code/
+USER root
+RUN chown -R $UID:$GID /code/
+RUN chmod -R 777 /code/
+USER $UNAME
 WORKDIR /code/config
 
 # Run server in production mode
