@@ -40,10 +40,6 @@ push-db:
 	docker build -f Dockerfile_db . -t flawlesse/routes4life_db_local:latest;\
 	docker push flawlesse/routes4life_db_local:latest
 
-# FOR MOBILE DEVS
-run-local-server:
-	docker-compose -f docker-compose-local.yml up -d
-stop-local-server:
-	docker-compose -f docker-compose-local.yml down
-migrate-local:
-	docker exec --tty $$(docker-compose -f docker-compose-local.yml ps -q api) python manage.py migrate
+# FOR AWS LINUX
+clear-docker-cache:
+	docker system prune -a
