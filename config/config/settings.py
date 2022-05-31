@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG")
+DEBUG = bool(os.environ.get("DEBUG") not in ("false", "False", "0", "f", "F"))
 if DEBUG is None:
     DEBUG = True
 
