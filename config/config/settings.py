@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG")
+DEBUG = bool(os.environ.get("DEBUG") not in ("false", "False", "0", "f", "F"))
 if DEBUG is None:
     DEBUG = True
 
@@ -196,10 +196,10 @@ STATIC_URL = "static/"
 
 STATIC_ROOT = BASE_DIR / "static"
 
-MEDIA_URL = "media/"
+# MEDIA_URL = "media/"
 
 # MEDIA_ROOT = BASE_DIR / "media"
-MEDIA_ROOT = "/media"
+# MEDIA_ROOT = "/media"
 
 # STATICFILES_DIRS = (
 #     # ("js", STATIC_ROOT / "js"),
@@ -231,18 +231,18 @@ EMAIL_HOST_PASSWORD = env_config.get("EMAIL_HOST_PASSWORD")
 
 
 # Media files upload
-# DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
-# AWS_S3_ACCESS_KEY_ID = env_config.get("AWS_S3_ACCESS_KEY_ID")
+AWS_S3_ACCESS_KEY_ID = env_config.get("AWS_S3_ACCESS_KEY_ID")
 
-# AWS_S3_SECRET_ACCESS_KEY = env_config.get("AWS_S3_SECRET_ACCESS_KEY")
+AWS_S3_SECRET_ACCESS_KEY = env_config.get("AWS_S3_SECRET_ACCESS_KEY")
 
-# AWS_STORAGE_BUCKET_NAME = env_config.get("AWS_STORAGE_BUCKET_NAME")
+AWS_STORAGE_BUCKET_NAME = env_config.get("AWS_STORAGE_BUCKET_NAME")
 
-# AWS_QUERYSTRING_AUTH = False
+AWS_QUERYSTRING_AUTH = False
 
-# AWS_S3_FILE_OVERWRITE = True
+AWS_S3_FILE_OVERWRITE = True
 
-# AWS_DEFAULT_ACL = None
+AWS_DEFAULT_ACL = None
 
-# UPLOAD_ROOT = env_config.get("UPLOAD_ROOT")
+UPLOAD_ROOT = env_config.get("UPLOAD_ROOT")
