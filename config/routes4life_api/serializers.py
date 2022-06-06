@@ -7,8 +7,9 @@ from django.core.mail import send_mail
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import ModelSerializer, Serializer
+from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from .models import User
+from .models import Place, User
 from .utils import ResetCodeManager, SessionTokenManager
 
 
@@ -169,7 +170,9 @@ class UserInfoSerializer(ModelSerializer):
         super().save(**kwargs)
 
 
+# TO BE REMOVED
 class LocationSerializer(Serializer):
+    # latitude, longitude
     location = serializers.DictField(child=serializers.DecimalField(20, 15))
 
     def validate(self, raw_data):
@@ -177,3 +180,57 @@ class LocationSerializer(Serializer):
         if "latitude" not in inner_keys and "longitude" not in inner_keys:
             raise ValidationError("You must provide latitude and longitude fields.")
         return raw_data
+
+
+class ClientCreatePlaceSerializer(ModelSerializer):
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
+    rating = serializers.DecimalField(3, 2, required=True)
+
+    class Meta:
+        model = Place
+        exclude = ("location", "added_by")
+
+
+class CreatePlaceSerializer(GeoFeatureModelSerializer):
+    rating = serializers.DecimalField(3, 2, required=True)
+
+    class Meta:
+        model = Place
+        exclude = (
+            "id",
+            "added_by",
+        )
+        geo_field = "location"
+
+    def create(self, validated_data):
+        validated_data["added_by"] = self.context["user"]
+        # tmp_main_image = validated_data["main_image"]
+        tmp_main_image = validated_data.pop("main_image")
+        rating = validated_data.pop("rating")
+        instance = self.Meta.model.objects.create(**validated_data)
+        instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
+        instance.ratings.create(
+            user=self.context["user"], place=instance, rating=rating
+        )
+        instance.refresh_from_db()
+        return instance
+
+
+class GetPlaceSerializer(ModelSerializer):
+    added_by = serializers.SlugRelatedField(read_only=True, slug_field="email")
+    rating = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Place
+        fields = "__all__"
+
+    def get_rating(self, current_place):
+        queryset = current_place.ratings.filter(user=self.context["user"])
+        if queryset.exists():
+            return queryset[0].rating
+        return 0
+
+    def get_can_edit(self, current_place):
+        return current_place.added_by == self.context["user"]

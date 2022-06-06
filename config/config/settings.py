@@ -29,7 +29,7 @@ if DEBUG is None:
     DEBUG = True
 
 if DEBUG:
-    env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env"))
+    env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env_dev"))
 else:
     env_config = Config(RepositoryEnv(BASE_DIR.parent / ".env_prod"))
 

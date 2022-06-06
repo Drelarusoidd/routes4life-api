@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .views import (
     ForgotPasswordViewSet,
+    PlaceViewSet,
     RegisterAPIView,
     UserInfoViewSet,
     change_my_email,
@@ -38,4 +39,14 @@ urlpatterns = [
         name="user_settings",
     ),
     path("homepage/", homepage, name="homepage"),
+    path(
+        "places/",
+        PlaceViewSet.as_view(
+            {
+                "get": "get_places",
+                "post": "create_place",
+            }
+        ),
+        name="places",
+    ),
 ]

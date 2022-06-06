@@ -13,11 +13,15 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
+from .models import Place
 from .serializers import (
     ChangePasswordForgotSerializer,
     ChangePasswordSerializer,
+    ClientCreatePlaceSerializer,
     CodeWithEmailSerializer,
+    CreatePlaceSerializer,
     FindEmailSerializer,
+    GetPlaceSerializer,
     LocationSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
@@ -236,3 +240,43 @@ def homepage(request):
             ],
         }
     )
+
+
+class PlaceViewSet(viewsets.GenericViewSet):
+    queryset = Place.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    @action(detail=False, methods=["get"])
+    def get_places(self, request):
+        serializer = GetPlaceSerializer(
+            self.get_queryset(), many=True, context={"user": request.user}
+        )
+        return Response(serializer.data, 200)
+
+    @action(detail=False, methods=["post"])
+    def create_place(self, request):
+        serializer = ClientCreatePlaceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        latitude, longitude = (
+            serializer.validated_data.pop("latitude"),
+            serializer.validated_data.pop("longitude"),
+        )
+        transformed_data = {}
+        properties = {**serializer.validated_data}
+        transformed_data["type"] = "Feature"
+        transformed_data["properties"] = properties
+        transformed_data["geometry"] = {
+            "type": "Point",
+            "coordinates": [
+                latitude,
+                longitude,
+            ],
+        }
+        inner_serializer = CreatePlaceSerializer(
+            data=transformed_data, context={"user": request.user}
+        )
+        inner_serializer.is_valid(raise_exception=True)
+        place = inner_serializer.save()
+
+        response_serializer = GetPlaceSerializer(place, context={"user": request.user})
+        return Response(response_serializer.data, 201)

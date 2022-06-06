@@ -72,3 +72,10 @@ def upload_avatar_to(instance, filename):
         # f"{instance.email.replace('@', 'AT')}"
         + f"/avatar{os.path.splitext(filename)[1]}"
     )
+
+
+def upload_place_mainimg_to(instance, filename):
+    return (
+        f"{settings.UPLOAD_ROOT}/{instance.id}"
+        + f"/main-image{os.path.splitext(filename)[1]}"
+    )

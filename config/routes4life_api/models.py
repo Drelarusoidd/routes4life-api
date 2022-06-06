@@ -8,7 +8,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .utils import upload_avatar_to
+from .utils import upload_avatar_to, upload_place_mainimg_to
 
 
 # MODELS
@@ -83,16 +83,25 @@ class Place(models.Model):
     added_by = models.ForeignKey(to=User, on_delete=models.CASCADE)
     name = models.CharField(max_length=200, blank=False)
     category = models.CharField(max_length=100, blank=False)
-    rating = models.DecimalField(max_digits=3, decimal_places=2)
     description = models.TextField(blank=True)
     address = models.CharField(max_length=200)
     location = models.PointField()
-    main_image = models.ImageField(blank=True, null=True)
+    main_image = models.ImageField(
+        upload_to=upload_place_mainimg_to, blank=True, null=True
+    )
 
 
 class PlaceImages(models.Model):
     place = models.ForeignKey(to=Place, on_delete=models.CASCADE)
     image = models.ImageField(blank=True, null=True)
+
+
+class PlaceRating(models.Model):
+    user = models.ForeignKey(to=User, on_delete=models.CASCADE)
+    place = models.ForeignKey(
+        to=Place, on_delete=models.CASCADE, related_name="ratings"
+    )
+    rating = models.DecimalField(max_digits=3, decimal_places=2)
 
 
 # SIGNAL RECEIVERS
