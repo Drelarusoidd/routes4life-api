@@ -9,8 +9,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import ModelSerializer, Serializer
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from .models import Place, User
-from .utils import ResetCodeManager, SessionTokenManager
+from routes4life_api.models import Place, PlaceImages, User
+from routes4life_api.utils import ResetCodeManager, SessionTokenManager
 
 
 class RegisterUserSerializer(ModelSerializer):
@@ -182,7 +182,7 @@ class LocationSerializer(Serializer):
         return raw_data
 
 
-class ClientCreatePlaceSerializer(ModelSerializer):
+class ClientValidatePlaceSerializer(ModelSerializer):
     latitude = serializers.FloatField()
     longitude = serializers.FloatField()
     rating = serializers.DecimalField(3, 2, required=True)
@@ -192,7 +192,7 @@ class ClientCreatePlaceSerializer(ModelSerializer):
         exclude = ("location", "added_by")
 
 
-class CreatePlaceSerializer(GeoFeatureModelSerializer):
+class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
     rating = serializers.DecimalField(3, 2, required=True)
 
     class Meta:
@@ -205,14 +205,27 @@ class CreatePlaceSerializer(GeoFeatureModelSerializer):
 
     def create(self, validated_data):
         validated_data["added_by"] = self.context["user"]
-        # tmp_main_image = validated_data["main_image"]
-        tmp_main_image = validated_data.pop("main_image")
+        tmp_main_image = validated_data.pop("main_image", None)
         rating = validated_data.pop("rating")
         instance = self.Meta.model.objects.create(**validated_data)
-        instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
+        if tmp_main_image is not None:
+            instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         instance.ratings.create(
             user=self.context["user"], place=instance, rating=rating
         )
+        instance.refresh_from_db()
+        return instance
+
+    def update(self, instance, validated_data):
+        tmp_main_image = validated_data.pop("main_image", None)
+        rating = validated_data.pop("rating", None)
+        super().update(instance, validated_data)
+        if tmp_main_image is not None:
+            instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
+        if rating is not None:
+            instance.ratings.filter(user=self.context["user"], place=instance).update(
+                rating=rating
+            )
         instance.refresh_from_db()
         return instance
 
@@ -221,12 +234,14 @@ class GetPlaceSerializer(ModelSerializer):
     added_by = serializers.SlugRelatedField(read_only=True, slug_field="email")
     rating = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
+    secondary_images = serializers.SerializerMethodField()
 
     class Meta:
         model = Place
         fields = "__all__"
 
     def get_rating(self, current_place):
+        # NOTE: update in future!!!
         queryset = current_place.ratings.filter(user=self.context["user"])
         if queryset.exists():
             return queryset[0].rating
@@ -234,3 +249,60 @@ class GetPlaceSerializer(ModelSerializer):
 
     def get_can_edit(self, current_place):
         return current_place.added_by == self.context["user"]
+
+    def get_secondary_images(self, current_place):
+        return [
+            [img.id, img.image.url]
+            for img in current_place.secondary_images.filter(place=current_place)
+        ]
+
+
+class AddPlaceImagesSerializer(Serializer):
+    images = serializers.ListField(child=serializers.ImageField(), required=True)
+
+    def validate(self, raw_data):
+        place = self.context["place"]
+        print(
+            f"place[id={place.id}].secondary_images.all()="
+            + f"{[img for img in place.secondary_images.all()]}"
+        )
+        if place.secondary_images.all().count() + len(raw_data["images"]) > 10:
+            raise ValidationError(
+                {"images": "Total of secondary images has to be less or equal to 10!"}
+            )
+        return raw_data
+
+    def create(self):
+        place = self.context["place"]
+        for image in self.validated_data["images"]:
+            instance = PlaceImages.objects.create(place=place)
+            instance.image.save(image.name, image.file, True)
+        place.refresh_from_db()
+        return place
+
+
+class RemovePlaceImagesSerializer(Serializer):
+    image_ids = serializers.ListField(child=serializers.IntegerField(), required=True)
+
+    def validate(self, raw_data):
+        place = self.context["place"]
+        print(
+            f"place[id={place.id}].secondary_images.all()="
+            + f"{[img for img in place.secondary_images.all()]}"
+        )
+        if place.secondary_images.all().count() - len(raw_data["image_ids"]) < 0:
+            raise ValidationError(
+                {"image_ids": "You want to remove more images than there is!"}
+            )
+        for place_image in place.secondary_images.all():
+            if place_image.id not in raw_data["image_ids"]:
+                raise ValidationError({"image_ids": "Some ids do not exist."})
+        return raw_data
+
+    def delete(self):
+        place = self.context["place"]
+        place_images = place.secondary_images.all()
+        for _id in self.validated_data["image_ids"]:
+            place_images.get(pk=_id).delete()
+        place.refresh_from_db()
+        return place
