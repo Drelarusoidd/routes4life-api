@@ -52,6 +52,26 @@ class SessionTokenManager:
         return True
 
 
+def convert_placedata_to_geojson(data):
+    transformed_data = {}
+    if data.get("latitude") is not None and data.get("longitude") is not None:
+        latitude, longitude = (
+            data.pop("latitude"),
+            data.pop("longitude"),
+        )
+        transformed_data["geometry"] = {
+            "type": "Point",
+            "coordinates": [
+                latitude,
+                longitude,
+            ],
+        }
+    properties = {**data}
+    transformed_data["type"] = "Feature"
+    transformed_data["properties"] = properties
+    return transformed_data
+
+
 def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
     if response is not None:
@@ -67,8 +87,24 @@ def custom_exception_handler(exc, context):
 
 
 def upload_avatar_to(instance, filename):
+    """Instance is of type User."""
     return (
         f"{settings.UPLOAD_ROOT}/{instance.email.replace('@', 'AT')}"
-        # f"{instance.email.replace('@', 'AT')}"
         + f"/avatar{os.path.splitext(filename)[1]}"
+    )
+
+
+def upload_place_mainimg_to(instance, filename):
+    """Instance is of type Place."""
+    return (
+        f"{settings.UPLOAD_ROOT}/places/{instance.id}"
+        + f"/main-image{os.path.splitext(filename)[1]}"
+    )
+
+
+def upload_place_secimg_to(instance, filename):
+    """Instance is of type PlaceImage."""
+    return (
+        f"{settings.UPLOAD_ROOT}/places/{instance.place.id}"
+        + f"/secondary_img_{instance.id}{os.path.splitext(filename)[1]}"
     )

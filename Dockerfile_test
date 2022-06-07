@@ -51,6 +51,6 @@ RUN poetry show --tree
 COPY . /code/
 USER root
 RUN chown -R $UID:$GID /code/
-RUN chmod -R 777 /code/
+# RUN chmod -R 777 /code/
 USER $UNAME
 WORKDIR /code/config

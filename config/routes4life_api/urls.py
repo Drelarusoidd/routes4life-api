@@ -1,8 +1,10 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .views import (
+from routes4life_api.views import (
     ForgotPasswordViewSet,
+    PlaceImagesViewSet,
+    PlaceViewSet,
     RegisterAPIView,
     UserInfoViewSet,
     change_my_email,
@@ -38,4 +40,34 @@ urlpatterns = [
         name="user_settings",
     ),
     path("homepage/", homepage, name="homepage"),
+    path(
+        "places/",
+        PlaceViewSet.as_view(
+            {
+                "get": "get_places",
+                "post": "create_place",
+            }
+        ),
+        name="places_list_create",
+    ),
+    path(
+        "places/<int:pk>/",
+        PlaceViewSet.as_view(
+            {
+                "patch": "update_place",
+                "delete": "delete_place",
+            }
+        ),
+        name="places_update_delete",
+    ),
+    path(
+        "places/<int:pk>/images/",
+        PlaceImagesViewSet.as_view(
+            {
+                "post": "add_images",
+                "delete": "remove_images",
+            }
+        ),
+        name="place_images",
+    ),
 ]
