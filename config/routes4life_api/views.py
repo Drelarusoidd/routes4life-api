@@ -150,7 +150,9 @@ class ForgotPasswordViewSet(viewsets.GenericViewSet):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def homepage(request):
-    places = GetPlaceSerializer(request.user.places.all(), many=True).data
+    places = GetPlaceSerializer(
+        request.user.places.all(), context={"user": request.user}, many=True
+    ).data
     user_data = UserInfoSerializer(request.user).data
     return Response({**user_data, "places": places})
 
