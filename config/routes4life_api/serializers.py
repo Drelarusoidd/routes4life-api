@@ -61,8 +61,12 @@ class ChangePasswordSerializer(ModelSerializer):
         super(ChangePasswordSerializer, self).__init__(*args, **kwargs)
 
     def validate(self, raw_data):
-        if check_password(raw_data["password"], self.instance.password) is False:
+        if not check_password(raw_data["password"], self.instance.password):
             raise serializers.ValidationError("Old password is incorrect!")
+        if check_password(raw_data["new_password"], self.instance.password):
+            raise serializers.ValidationError(
+                "Changing to the same password is not allowed!"
+            )
         if raw_data["new_password"] != raw_data["confirmation_password"]:
             raise serializers.ValidationError("New passwords don't match!")
         return raw_data
@@ -167,19 +171,13 @@ class UserInfoSerializer(ModelSerializer):
                 self.instance.avatar.delete(save=False)
         except KeyError:
             pass
+        print(f"user_info_kwargs={kwargs}")
         super().save(**kwargs)
 
 
-# TO BE REMOVED
 class LocationSerializer(Serializer):
-    # latitude, longitude
-    location = serializers.DictField(child=serializers.DecimalField(20, 15))
-
-    def validate(self, raw_data):
-        inner_keys = raw_data["location"].keys()
-        if "latitude" not in inner_keys and "longitude" not in inner_keys:
-            raise ValidationError("You must provide latitude and longitude fields.")
-        return raw_data
+    latitude = serializers.FloatField(required=True)
+    longitude = serializers.FloatField(required=True)
 
 
 class ClientValidatePlaceSerializer(ModelSerializer):

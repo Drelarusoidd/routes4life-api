@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from django.test import Client
 
 # from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets
@@ -27,7 +26,6 @@ from routes4life_api.serializers import (
     CreateUpdatePlaceSerializer,
     FindEmailSerializer,
     GetPlaceSerializer,
-    LocationSerializer,
     RegisterUserSerializer,
     RemovePlaceImagesSerializer,
     UpdateEmailSerializer,
@@ -74,33 +72,35 @@ def change_my_email(request):
     )
 
 
-@api_view(["PATCH"])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def change_my_password(request):
-    old_passwd = request.data.get("password")
-    new_password = request.data.get("new_password")
-    confirmation_password = request.data.get("confirmation_password")
-    serializer = ChangePasswordSerializer(
-        request.user,
-        {
-            "password": old_passwd,
-            "new_password": new_password,
-            "confirmation_password": confirmation_password,
-        },
-        partial=True,
-    )
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "Successfully changed password."}, 200)
-    return Response(
-        {
-            "detail": serializer.errors.get(
-                "non_field_errors", "No blank fields allowed!"
+class UserInfoViewSet(viewsets.GenericViewSet):
+    queryset = User.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    @action(detail=False, methods=["get"])
+    def get_current(self, request):
+        serializer = UserInfoSerializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["patch"])
+    def partial_update_current(self, request):
+        change_pass_serializer = None
+        if request.data.get("password") is not None:
+            change_pass_serializer = ChangePasswordSerializer(
+                request.user, data=request.data
             )
-        },
-        400,
-    )
+            change_pass_serializer.is_valid(raise_exception=True)
+        serializer = UserInfoSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        # if everything is fine, we apply all changes at once
+        if change_pass_serializer is not None:
+            change_pass_serializer.save()
+        serializer.save()
+        return Response(serializer.data, 200)
+
+    @action(detail=False, methods=["delete"])
+    def delete_current(self, request):
+        request.user.delete()
+        return Response({"success": "User successfully deleted."}, 204)
 
 
 class ForgotPasswordViewSet(viewsets.GenericViewSet):
@@ -146,107 +146,13 @@ class ForgotPasswordViewSet(viewsets.GenericViewSet):
         )
 
 
-class UserInfoViewSet(viewsets.GenericViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserInfoSerializer
-    permission_classes = (IsAuthenticated,)
-
-    @action(detail=False, methods=["get"])
-    def get_current(self, request):
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["put"])
-    def update_current(self, request):
-        serializer = self.get_serializer(request.user, data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response(serializer.data, 200)
-
-    @action(detail=False, methods=["patch"])
-    def partial_update_current(self, request):
-        serializer = self.get_serializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response(serializer.data, 200)
-
-
-@api_view(["POST"])
+@api_view(["GET"])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def homepage(request):
-    location_serializer = LocationSerializer(data=request.data)
-    location_serializer.is_valid(raise_exception=True)
-
-    client = Client()
-    user_data = client.get(
-        path="/api/users/settings/",
-        **{
-            "HTTP_AUTHORIZATION": request.META["HTTP_AUTHORIZATION"],
-        },
-    ).json()
-
-    return Response(
-        {
-            **user_data,
-            "places": [
-                {
-                    "name": "Tesla Bar",
-                    "title": "Tesla Bar",
-                    "address": "Zybitskaya st., 6",
-                    "rating": 4.12,
-                    "city": "Minsk",
-                    "category": "Bar",
-                    "description": "Just a regular bar, nothing special.",
-                    "location": {
-                        "latitude": 53.90631212153169,
-                        "longitude": 27.5577447932532,
-                    },
-                    "images": [
-                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/bar-secondary1.jpg",
-                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/bar-secondary2.jpg",
-                    ],
-                    "mainImage": "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/bar-main.jpg",
-                },
-                {
-                    "name": "Edo Japan",
-                    "title": "Edo Japan",
-                    "address": "1067 I-30 Frontage Rd #109, Rockwall, TX 75087, USA, Texas",
-                    "rating": 3.8,
-                    "city": "Mobil City",
-                    "category": "Restaurant",
-                    "description": "Just a regular foodcort, nothing special.",
-                    "location": {
-                        "latitude": 33.690417515989516,
-                        "longitude": -96.42122490888232,
-                    },
-                    "images": [
-                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/foodcort-secondary1.jpg",
-                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/foodcort-secondary2.jpg",
-                    ],
-                    "mainImage": "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/foodcort-main.png",
-                },
-                {
-                    "name": "GYM Express",
-                    "title": "GYM Express",
-                    "address": "Pobediteley ave., 84",
-                    "rating": 4.56,
-                    "city": "Minsk",
-                    "category": "Gym",
-                    "description": "Just a regular gym, nothing special.",
-                    "location": {
-                        "latitude": 53.93817828637732,
-                        "longitude": 27.48793170027158,
-                    },
-                    "images": [
-                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/gym-secondary1.jpg",
-                        "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/gym-secondary2.jpeg",
-                    ],
-                    "mainImage": "https://routes4life-media.s3.amazonaws.com/media/mockup_places_photos/gym-main.jpg",
-                },
-            ],
-        }
-    )
+    places = GetPlaceSerializer(request.user.places.all(), many=True).data
+    user_data = UserInfoSerializer(request.user).data
+    return Response({**user_data, "places": places})
 
 
 class PlaceViewSet(viewsets.GenericViewSet):
