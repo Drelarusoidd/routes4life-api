@@ -163,7 +163,7 @@ class UserInfoSerializer(ModelSerializer):
         model = User
         fields = ("email", "first_name", "last_name", "phone_number", "avatar")
         read_only_fields = ("email",)
-        # NOTE: extra_kwargs = {"phone_number": {"required": False}}
+        extra_kwargs = {"phone_number": {"required": False}}
 
     def save(self, **kwargs):
         try:
