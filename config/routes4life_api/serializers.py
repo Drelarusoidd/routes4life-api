@@ -163,7 +163,7 @@ class UserInfoSerializer(ModelSerializer):
         model = User
         fields = ("email", "first_name", "last_name", "phone_number", "avatar")
         read_only_fields = ("email",)
-        extra_kwargs = {"phone_number": {"required": False}}
+        # NOTE: extra_kwargs = {"phone_number": {"required": False}}
 
     def save(self, **kwargs):
         try:
@@ -171,7 +171,6 @@ class UserInfoSerializer(ModelSerializer):
                 self.instance.avatar.delete(save=False)
         except KeyError:
             pass
-        print(f"user_info_kwargs={kwargs}")
         super().save(**kwargs)
 
 
@@ -188,6 +187,7 @@ class ClientValidatePlaceSerializer(ModelSerializer):
     class Meta:
         model = Place
         exclude = ("location", "added_by")
+        # extra_kwargs = {"main_image": {"required": True}}
 
 
 class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
@@ -233,10 +233,12 @@ class GetPlaceSerializer(ModelSerializer):
     rating = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     secondary_images = serializers.SerializerMethodField()
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
 
     class Meta:
         model = Place
-        fields = "__all__"
+        exclude = ["location"]
 
     def get_rating(self, current_place):
         # NOTE: update in future!!!
@@ -249,58 +251,63 @@ class GetPlaceSerializer(ModelSerializer):
         return current_place.added_by == self.context["user"]
 
     def get_secondary_images(self, current_place):
-        return [
-            [img.id, img.image.url]
-            for img in current_place.secondary_images.filter(place=current_place)
-        ]
+        return [[img.id, img.image.url] for img in current_place.secondary_images.all()]
+
+    def get_latitude(self, current_place):
+        return current_place.location.coords[1]
+
+    def get_longitude(self, current_place):
+        return current_place.location.coords[0]
 
 
-class AddPlaceImagesSerializer(Serializer):
-    images = serializers.ListField(child=serializers.ImageField(), required=True)
-
-    def validate(self, raw_data):
-        place = self.context["place"]
-        print(
-            f"place[id={place.id}].secondary_images.all()="
-            + f"{[img for img in place.secondary_images.all()]}"
-        )
-        if place.secondary_images.all().count() + len(raw_data["images"]) > 10:
-            raise ValidationError(
-                {"images": "Total of secondary images has to be less or equal to 10!"}
-            )
-        return raw_data
-
-    def create(self):
-        place = self.context["place"]
-        for image in self.validated_data["images"]:
-            instance = PlaceImages.objects.create(place=place)
-            instance.image.save(image.name, image.file, True)
-        place.refresh_from_db()
-        return place
-
-
-class RemovePlaceImagesSerializer(Serializer):
-    image_ids = serializers.ListField(child=serializers.IntegerField(), required=True)
+class UpdatePlaceImagesSerializer(Serializer):
+    images_to_upload = serializers.ListField(
+        child=serializers.ImageField(), required=False
+    )
+    image_ids_to_delete = serializers.ListField(
+        child=serializers.IntegerField(), required=False
+    )
 
     def validate(self, raw_data):
         place = self.context["place"]
-        print(
-            f"place[id={place.id}].secondary_images.all()="
-            + f"{[img for img in place.secondary_images.all()]}"
+        if raw_data.get("images_to_upload", None) is None:
+            raw_data["images_to_upload"] = []
+        if raw_data.get("image_ids_to_delete", None) is None:
+            raw_data["image_ids_to_delete"] = []
+        # remove duplicates
+        raw_data["image_ids_to_delete"] = list(set(raw_data["image_ids_to_delete"]))
+
+        num_delete = place.secondary_images.all().count() - len(
+            raw_data["image_ids_to_delete"]
         )
-        if place.secondary_images.all().count() - len(raw_data["image_ids"]) < 0:
+        if num_delete < 0:
             raise ValidationError(
-                {"image_ids": "You want to remove more images than there is!"}
+                {"image_ids_to_delete": "You want to remove more images than there is!"}
             )
-        for place_image in place.secondary_images.all():
-            if place_image.id not in raw_data["image_ids"]:
-                raise ValidationError({"image_ids": "Some ids do not exist."})
+        for _id in raw_data["image_ids_to_delete"]:
+            if _id not in place.secondary_images.values_list("id", flat=True):
+                raise ValidationError({"image_ids_to_delete": "Some ids do not exist."})
+
+        num_upload = place.secondary_images.all().count() + len(
+            raw_data["images_to_upload"]
+        )
+        if num_upload > 10:
+            raise ValidationError(
+                {
+                    "images_to_upload": "Total of secondary images has to be less or equal to 10!"
+                }
+            )
         return raw_data
 
-    def delete(self):
+    def save(self):
         place = self.context["place"]
         place_images = place.secondary_images.all()
-        for _id in self.validated_data["image_ids"]:
+        for _id in self.validated_data["image_ids_to_delete"]:
             place_images.get(pk=_id).delete()
+        place.refresh_from_db()
+
+        for image in self.validated_data["images_to_upload"]:
+            instance = PlaceImages.objects.create(place=place)
+            instance.image.save(image.name, image.file, True)
         place.refresh_from_db()
         return place

@@ -1,15 +1,17 @@
 from django.contrib.auth import get_user_model
+from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import D
 from django.shortcuts import get_object_or_404
 
 # from django.views.decorators.csrf import csrf_exempt
-from rest_framework import viewsets
+from rest_framework import filters, viewsets
 from rest_framework.decorators import (
     action,
     api_view,
     authentication_classes,
     permission_classes,
 )
-from rest_framework.generics import CreateAPIView
+from rest_framework.generics import CreateAPIView, GenericAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -18,7 +20,6 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from routes4life_api.models import Place
 from routes4life_api.permissions import IsSameUserOrReadonly
 from routes4life_api.serializers import (
-    AddPlaceImagesSerializer,
     ChangePasswordForgotSerializer,
     ChangePasswordSerializer,
     ClientValidatePlaceSerializer,
@@ -26,9 +27,10 @@ from routes4life_api.serializers import (
     CreateUpdatePlaceSerializer,
     FindEmailSerializer,
     GetPlaceSerializer,
+    LocationSerializer,
     RegisterUserSerializer,
-    RemovePlaceImagesSerializer,
     UpdateEmailSerializer,
+    UpdatePlaceImagesSerializer,
     UserInfoSerializer,
 )
 from routes4life_api.utils import convert_placedata_to_geojson
@@ -219,7 +221,8 @@ class PlaceViewSet(viewsets.GenericViewSet):
         return Response({"success": "Place successfully removed."}, 204)
 
 
-class PlaceImagesViewSet(viewsets.GenericViewSet):
+class UpdatePlaceSecondaryImagesAPIView(GenericAPIView):
+    serializer_class = UpdatePlaceImagesSerializer
     queryset = Place.objects.all()
     permission_classes = (IsSameUserOrReadonly,)
 
@@ -228,26 +231,53 @@ class PlaceImagesViewSet(viewsets.GenericViewSet):
         self.check_object_permissions(self.request, obj)
         return obj
 
-    @action(detail=True, methods=["post"])
-    def add_images(self, request, pk=None):
-        place = self.get_object()
-        serializer = AddPlaceImagesSerializer(
-            data=request.data, context={"place": place}
+    def put(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, context={"place": self.get_object()}
         )
         serializer.is_valid(raise_exception=True)
-        place = serializer.create()
-
+        place = serializer.save()
         response_serializer = GetPlaceSerializer(place, context={"user": request.user})
         return Response(response_serializer.data, 200)
 
-    @action(detail=True, methods=["delete"])
-    def remove_images(self, request, pk=None):
-        place = self.get_object()
-        serializer = RemovePlaceImagesSerializer(
-            data=request.data, context={"place": place}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.delete()
 
-        response_serializer = GetPlaceSerializer(place, context={"user": request.user})
-        return Response(response_serializer.data, 200)
+class NearestPlacesAPIView(ListAPIView):
+    serializer_class = GetPlaceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        return {
+            "request": self.request,
+            "format": self.format_kwarg,
+            "view": self,
+            "user": self.request.user,
+        }
+
+    def get_queryset(self):
+        lon = self.request.query_params.get("lon")
+        lat = self.request.query_params.get("lat")
+        validation_serializer = LocationSerializer(
+            data={"longitude": lon, "latitude": lat}
+        )
+        validation_serializer.is_valid(raise_exception=True)
+
+        current_point = GEOSGeometry("POINT({} {})".format(lon, lat), srid=4326)
+        return Place.objects.filter(location__distance_lte=(current_point, D(km=100)))
+
+
+class SearchPlacesAPIView(ListAPIView):
+    queryset = Place.objects.all()
+    serializer_class = GetPlaceSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "added_by__email", "category", "address"]
+    ordering_fields = ["name", "category", "address"]
+    ordering = ["name"]
+
+    def get_serializer_context(self):
+        return {
+            "request": self.request,
+            "format": self.format_kwarg,
+            "view": self,
+            "user": self.request.user,
+        }

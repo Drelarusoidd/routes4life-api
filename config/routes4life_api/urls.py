@@ -3,9 +3,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from routes4life_api.views import (
     ForgotPasswordViewSet,
-    PlaceImagesViewSet,
+    NearestPlacesAPIView,
     PlaceViewSet,
     RegisterAPIView,
+    SearchPlacesAPIView,
+    UpdatePlaceSecondaryImagesAPIView,
     UserInfoViewSet,
     change_my_email,
     homepage,
@@ -60,12 +62,13 @@ urlpatterns = [
     ),
     path(
         "places/<int:pk>/images/",
-        PlaceImagesViewSet.as_view(
-            {
-                "post": "add_images",
-                "delete": "remove_images",
-            }
-        ),
+        UpdatePlaceSecondaryImagesAPIView.as_view(),
         name="place_images",
     ),
+    path(
+        "places/nearest/",
+        NearestPlacesAPIView.as_view(),
+        name="nearest_places",
+    ),
+    path("places/search/", SearchPlacesAPIView.as_view(), name="search_places"),
 ]
