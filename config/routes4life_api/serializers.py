@@ -348,15 +348,21 @@ class PlaceFilterSerializer(Serializer):
     # rating = serializers.DecimalField(3, 2, required=False)   NOTE complex logic
 
     def get_filters_applied_queryset(self):
-        qs = self.request.user.places.all()
+        qs = self.context["user"].places.all()
+        data = self.validated_data
         current_point = GEOSGeometry(
-            "POINT({} {})".format(self.longitude, self.latitude), srid=4326
+            "POINT({} {})".format(data["longitude"], data["latitude"]), srid=4326
         )
 
         filter_data = {}
-        filter_data["categories__id__in"] = self.validated_data.get("categories", None)
+        if data.get("categories", None) is not None:
+            filter_data["categories__id__in"] = data["categories"]
         filter_data["location__distance_lte"] = (
             current_point,
-            D(km=self.distance),
+            D(km=data["distance"]),
         )
-        return qs.filter(**filter_data)
+        print(qs)
+        print(filter_data)
+        qs = qs.filter(**filter_data)
+        print(qs)
+        return qs

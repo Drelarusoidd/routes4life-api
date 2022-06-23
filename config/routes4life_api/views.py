@@ -300,7 +300,9 @@ class FilterPlacesAPIView(GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         # POST BODY filtering
-        serializer = PlaceFilterSerializer(data=request.data)
+        serializer = PlaceFilterSerializer(
+            data=request.data, context={"user": request.user}
+        )
         serializer.is_valid(raise_exception=True)
         qs = serializer.get_filters_applied_queryset()
         # Search, pagination & ordering
@@ -309,5 +311,5 @@ class FilterPlacesAPIView(GenericAPIView):
         if page is not None:
             serializer = GetPlaceSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = GetPlaceSerializer(qs, many=True)
+        serializer = GetPlaceSerializer(qs, many=True, context={"user": request.user})
         return Response(serializer.data)
