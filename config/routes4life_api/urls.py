@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from routes4life_api.views import (
+    FilterPlacesAPIView,
     ForgotPasswordViewSet,
     NearestPlacesAPIView,
     PlaceViewSet,
@@ -71,4 +72,5 @@ urlpatterns = [
         name="nearest_places",
     ),
     path("places/search/", SearchPlacesAPIView.as_view(), name="search_places"),
+    path("places/filter/", FilterPlacesAPIView.as_view(), name="filter_places"),
 ]

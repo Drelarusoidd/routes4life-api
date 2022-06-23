@@ -74,6 +74,7 @@ def convert_placedata_to_geojson(data):
 
 
 def custom_exception_handler(exc, context):
+    # NOTE: UPDATE
     response = exception_handler(exc, context)
     if response is not None:
         newdata = dict()

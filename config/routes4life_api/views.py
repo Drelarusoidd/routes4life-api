@@ -28,6 +28,7 @@ from routes4life_api.serializers import (
     FindEmailSerializer,
     GetPlaceSerializer,
     LocationSerializer,
+    PlaceFilterSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
     UpdatePlaceImagesSerializer,
@@ -187,6 +188,9 @@ class PlaceViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         transformed_data = convert_placedata_to_geojson(serializer.validated_data)
+        transformed_data["properties"]["categories"] = [
+            cat.pk for cat in transformed_data["properties"]["categories"]
+        ]
         inner_serializer = CreateUpdatePlaceSerializer(
             data=transformed_data, context={"user": request.user}
         )
@@ -205,6 +209,10 @@ class PlaceViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         transformed_data = convert_placedata_to_geojson(serializer.validated_data)
+        if serializer.validated_data.get("categories", None) is not None:
+            transformed_data["properties"]["categories"] = [
+                cat.pk for cat in transformed_data["properties"]["categories"]
+            ]
         inner_serializer = CreateUpdatePlaceSerializer(
             place, data=transformed_data, context={"user": request.user}, partial=True
         )
@@ -256,28 +264,50 @@ class NearestPlacesAPIView(ListAPIView):
     def get_queryset(self):
         lon = self.request.query_params.get("lon")
         lat = self.request.query_params.get("lat")
+        dist = self.request.query_params.get("dist", 100)
         validation_serializer = LocationSerializer(
-            data={"longitude": lon, "latitude": lat}
+            data={"longitude": lon, "latitude": lat, "distance": dist}
         )
         validation_serializer.is_valid(raise_exception=True)
-
         current_point = GEOSGeometry("POINT({} {})".format(lon, lat), srid=4326)
-        return Place.objects.filter(location__distance_lte=(current_point, D(km=100)))
+        return self.request.user.places.filter(
+            location__distance_lte=(current_point, D(km=dist))
+        )
 
 
 class SearchPlacesAPIView(ListAPIView):
-    queryset = Place.objects.all()
     serializer_class = GetPlaceSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "added_by__email", "category", "address"]
-    ordering_fields = ["name", "category", "address"]
+    search_fields = ["name", "added_by__email", "categories__name", "address"]
+    ordering_fields = ["name", "categories__name", "address"]
     ordering = ["name"]
 
     def get_serializer_context(self):
-        return {
-            "request": self.request,
-            "format": self.format_kwarg,
-            "view": self,
-            "user": self.request.user,
-        }
+        context = super().get_serializer_context()
+        context["user"] = self.request.user
+        return context
+
+    def get_queryset(self):
+        return self.request.user.places.all()
+
+
+class FilterPlacesAPIView(GenericAPIView):
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "added_by__email", "categories__name", "address"]
+    ordering_fields = ["name", "categories__name", "address"]
+    ordering = ["name"]
+
+    def post(self, request, *args, **kwargs):
+        # POST BODY filtering
+        serializer = PlaceFilterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        qs = serializer.get_filters_applied_queryset()
+        # Search, pagination & ordering
+        qs = self.filter_queryset(qs)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = GetPlaceSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = GetPlaceSerializer(qs, many=True)
+        return Response(serializer.data)

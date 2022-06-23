@@ -3,14 +3,21 @@ import string
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import BaseUserManager
+from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import D
 from django.core.mail import send_mail
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-from rest_framework.serializers import ModelSerializer, Serializer
+from rest_framework.serializers import ModelSerializer, Serializer, ValidationError
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from routes4life_api.models import Place, PlaceImages, User
+from routes4life_api.models import Category, Place, PlaceImage, User
 from routes4life_api.utils import ResetCodeManager, SessionTokenManager
+from routes4life_api.validators import (
+    validate_distance,
+    validate_latitude,
+    validate_longitude,
+    validate_rating,
+)
 
 
 class RegisterUserSerializer(ModelSerializer):
@@ -175,23 +182,36 @@ class UserInfoSerializer(ModelSerializer):
 
 
 class LocationSerializer(Serializer):
-    latitude = serializers.FloatField(required=True)
-    longitude = serializers.FloatField(required=True)
+    latitude = serializers.FloatField(required=True, validators=[validate_latitude])
+    longitude = serializers.FloatField(required=True, validators=[validate_longitude])
+    distance = serializers.FloatField(required=False, validators=[validate_distance])
 
 
 class ClientValidatePlaceSerializer(ModelSerializer):
-    latitude = serializers.FloatField()
-    longitude = serializers.FloatField()
-    rating = serializers.DecimalField(3, 2, required=True)
+    latitude = serializers.FloatField(validators=[validate_latitude])
+    longitude = serializers.FloatField(validators=[validate_longitude])
+    rating = serializers.DecimalField(3, 2, required=True, validators=[validate_rating])
+    categories = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Category.objects.all(), required=True
+    )
 
     class Meta:
         model = Place
         exclude = ("location", "added_by")
-        # extra_kwargs = {"main_image": {"required": True}}
+        extra_kwargs = {"main_image": {"required": True, "allow_null": False}}
+
+
+class CategorySerializer(ModelSerializer):
+    class Meta:
+        model = Category
+        fields = "__all__"
 
 
 class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
     rating = serializers.DecimalField(3, 2, required=True)
+    categories = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Category.objects.all(), required=True
+    )
 
     class Meta:
         model = Place
@@ -203,11 +223,12 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
 
     def create(self, validated_data):
         validated_data["added_by"] = self.context["user"]
-        tmp_main_image = validated_data.pop("main_image", None)
+        tmp_main_image = validated_data.pop("main_image")
         rating = validated_data.pop("rating")
+        categories = validated_data.pop("categories")
         instance = self.Meta.model.objects.create(**validated_data)
-        if tmp_main_image is not None:
-            instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
+        instance.categories.set(categories)
+        instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         instance.ratings.create(
             user=self.context["user"], place=instance, rating=rating
         )
@@ -217,7 +238,10 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
     def update(self, instance, validated_data):
         tmp_main_image = validated_data.pop("main_image", None)
         rating = validated_data.pop("rating", None)
-        super().update(instance, validated_data)
+        categories = validated_data.pop("categories", None)
+        instance = super().update(instance, validated_data)
+        if categories is not None:
+            instance.categories.set(categories)
         if tmp_main_image is not None:
             instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         if rating is not None:
@@ -230,6 +254,7 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
 
 class GetPlaceSerializer(ModelSerializer):
     added_by = serializers.SlugRelatedField(read_only=True, slug_field="email")
+    categories = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     rating = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     secondary_images = serializers.SerializerMethodField()
@@ -241,7 +266,7 @@ class GetPlaceSerializer(ModelSerializer):
         exclude = ["location"]
 
     def get_rating(self, current_place):
-        # NOTE: update in future!!!
+        # NOTE: UPDATE
         queryset = current_place.ratings.filter(user=self.context["user"])
         if queryset.exists():
             return queryset[0].rating
@@ -307,7 +332,31 @@ class UpdatePlaceImagesSerializer(Serializer):
         place.refresh_from_db()
 
         for image in self.validated_data["images_to_upload"]:
-            instance = PlaceImages.objects.create(place=place)
+            instance = PlaceImage.objects.create(place=place)
             instance.image.save(image.name, image.file, True)
         place.refresh_from_db()
         return place
+
+
+class PlaceFilterSerializer(Serializer):
+    latitude = serializers.FloatField(required=True, validators=[validate_latitude])
+    longitude = serializers.FloatField(required=True, validators=[validate_longitude])
+    distance = serializers.FloatField(required=True, validators=[validate_distance])
+    categories = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Category.objects.all(), required=False
+    )
+    # rating = serializers.DecimalField(3, 2, required=False)   NOTE complex logic
+
+    def get_filters_applied_queryset(self):
+        qs = self.request.user.places.all()
+        current_point = GEOSGeometry(
+            "POINT({} {})".format(self.longitude, self.latitude), srid=4326
+        )
+
+        filter_data = {}
+        filter_data["categories__id__in"] = self.validated_data.get("categories", None)
+        filter_data["location__distance_lte"] = (
+            current_point,
+            D(km=self.distance),
+        )
+        return qs.filter(**filter_data)
