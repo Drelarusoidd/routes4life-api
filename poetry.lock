@@ -105,6 +105,25 @@ urllib3 = ">=1.25.4,<1.27"
 crt = ["awscrt (==0.13.8)"]
 
 [[package]]
+name = "certifi"
+version = "2022.6.15"
+description = "Python package for providing Mozilla's CA Bundle."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "charset-normalizer"
+version = "2.0.12"
+description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
+category = "main"
+optional = false
+python-versions = ">=3.5.0"
+
+[package.extras]
+unicode_backport = ["unicodedata2"]
+
+[[package]]
 name = "click"
 version = "8.0.4"
 description = "Composable command line interface toolkit"
@@ -332,6 +351,14 @@ setproctitle = ["setproctitle"]
 tornado = ["tornado (>=0.2)"]
 
 [[package]]
+name = "idna"
+version = "3.3"
+description = "Internationalized Domain Names in Applications (IDNA)"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
 name = "inflection"
 version = "0.5.1"
 description = "A port of Ruby on Rails inflector to Python"
@@ -376,6 +403,21 @@ description = "A fast and thorough lazy object proxy."
 category = "dev"
 optional = false
 python-versions = ">=3.6"
+
+[[package]]
+name = "mailchimp-marketing"
+version = "3.0.75"
+description = "Mailchimp Marketing API"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+certifi = ">=2017.4.17"
+python-dateutil = ">=2.1"
+requests = ">=2.23"
+six = ">=1.10"
+urllib3 = ">=1.23"
 
 [[package]]
 name = "mccabe"
@@ -615,6 +657,24 @@ hiredis = ["hiredis (>=1.0.0)"]
 ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
 
 [[package]]
+name = "requests"
+version = "2.28.0"
+description = "Python HTTP for Humans."
+category = "main"
+optional = false
+python-versions = ">=3.7, <4"
+
+[package.dependencies]
+certifi = ">=2017.4.17"
+charset-normalizer = ">=2.0.0,<2.1.0"
+idna = ">=2.5,<4"
+urllib3 = ">=1.21.1,<1.27"
+
+[package.extras]
+socks = ["PySocks (>=1.5.6,!=1.5.7)"]
+use_chardet_on_py3 = ["chardet (>=3.0.2,<5)"]
+
+[[package]]
 name = "s3transfer"
 version = "0.5.2"
 description = "An Amazon S3 Transfer Manager"
@@ -684,7 +744,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "097df09998236e31206304c438a066aaef0f47efd0cc38d180ccbdc4c7322a68"
+content-hash = "feec917d33f8fb0615dfd4f4b9a13649ae3afaa88fb527bc771e0f4d0f5ab58d"
 
 [metadata.files]
 asgiref = [
@@ -739,6 +799,14 @@ boto3 = [
 botocore = [
     {file = "botocore-1.26.4-py3-none-any.whl", hash = "sha256:bd436455310f8876dfab1a27760afffa5e34dced24b4ea6a9f6b20fec082e47e"},
     {file = "botocore-1.26.4.tar.gz", hash = "sha256:b818986c2dde395f117829d7206f775f5bfb37ef84eb05c94d3952f8e3d7fe8d"},
+]
+certifi = [
+    {file = "certifi-2022.6.15-py3-none-any.whl", hash = "sha256:fe86415d55e84719d75f8b69414f6438ac3547d2078ab91b67e779ef69378412"},
+    {file = "certifi-2022.6.15.tar.gz", hash = "sha256:84c85a9078b11105f04f3036a9482ae10e4621616db313fe045dd24743a0820d"},
+]
+charset-normalizer = [
+    {file = "charset-normalizer-2.0.12.tar.gz", hash = "sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597"},
+    {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
 ]
 click = [
     {file = "click-8.0.4-py3-none-any.whl", hash = "sha256:6a7a62563bbfabfda3a38f3023a1db4a35978c0abd76f6c9605ecd6554d6d9b1"},
@@ -807,6 +875,10 @@ gunicorn = [
     {file = "gunicorn-20.1.0-py3-none-any.whl", hash = "sha256:9dcc4547dbb1cb284accfb15ab5667a0e5d1881cc443e0677b4882a4067a807e"},
     {file = "gunicorn-20.1.0.tar.gz", hash = "sha256:e0a968b5ba15f8a328fdfd7ab1fcb5af4470c28aaf7e55df02a99bc13138e6e8"},
 ]
+idna = [
+    {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
+    {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
+]
 inflection = [
     {file = "inflection-0.5.1-py2.py3-none-any.whl", hash = "sha256:f38b2b640938a4f35ade69ac3d053042959b62a0f1076a5bbaa1b9526605a8a2"},
     {file = "inflection-0.5.1.tar.gz", hash = "sha256:1a29730d366e996aaacffb2f1f1cb9593dc38e2ddd30c91250c6dde09ea9b417"},
@@ -861,6 +933,9 @@ lazy-object-proxy = [
     {file = "lazy_object_proxy-1.7.1-cp39-cp39-win32.whl", hash = "sha256:2130db8ed69a48a3440103d4a520b89d8a9405f1b06e2cc81640509e8bf6548f"},
     {file = "lazy_object_proxy-1.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:677ea950bef409b47e51e733283544ac3d660b709cfce7b187f5ace137960d61"},
     {file = "lazy_object_proxy-1.7.1-pp37.pp38-none-any.whl", hash = "sha256:d66906d5785da8e0be7360912e99c9188b70f52c422f9fc18223347235691a84"},
+]
+mailchimp-marketing = [
+    {file = "mailchimp_marketing-3.0.75-py3-none-any.whl", hash = "sha256:34ca29268823504ddc873b29724905bab7f8eeb42ddb53f66077a2224cd3f02f"},
 ]
 mccabe = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
@@ -1031,6 +1106,10 @@ pytz = [
 redis = [
     {file = "redis-4.2.2-py3-none-any.whl", hash = "sha256:4e95f4ec5f49e636efcf20061a5a9110c20852f607cfca6865c07aaa8a739ee2"},
     {file = "redis-4.2.2.tar.gz", hash = "sha256:0107dc8e98a4f1d1d4aa00100e044287f77121a1e6d2085545c4b7fa94a7a27f"},
+]
+requests = [
+    {file = "requests-2.28.0-py3-none-any.whl", hash = "sha256:bc7861137fbce630f17b03d3ad02ad0bf978c844f3536d0edda6499dafce2b6f"},
+    {file = "requests-2.28.0.tar.gz", hash = "sha256:d568723a7ebd25875d8d1eaf5dfa068cd2fc8194b2e483d7b1f7c81918dbec6b"},
 ]
 s3transfer = [
     {file = "s3transfer-0.5.2-py3-none-any.whl", hash = "sha256:7a6f4c4d1fdb9a2b640244008e142cbc2cd3ae34b386584ef044dd0f27101971"},

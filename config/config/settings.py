@@ -216,13 +216,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # Email features
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = env_config.get("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = env_config.get("EMAIL_HOST_PASSWORD")
+# EMAIL_USE_TLS = True
+# EMAIL_USE_SSL = False
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_PORT = 587
+# EMAIL_HOST_USER = env_config.get("EMAIL_HOST_USER")
+# EMAIL_HOST_PASSWORD = env_config.get("EMAIL_HOST_PASSWORD")
 
+# MailChimp integration
+MAILCHIMP_API_KEY = env_config.get("MAILCHIMP_API_KEY")
+MAILCHIMP_DATA_CENTER = env_config.get("MAILCHIMP_DATA_CENTER")
+MAILCHIMP_EMAIL_LIST_ID = env_config.get("MAILCHIMP_EMAIL_LIST_ID")
 
 # Media files upload
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"

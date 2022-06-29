@@ -3,6 +3,8 @@ import string
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import BaseUserManager
+from django.contrib.gis.db.models import OuterRef, Subquery
+from django.contrib.gis.db.models.functions import GeometryDistance
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.core.mail import send_mail
@@ -10,12 +12,13 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, Serializer, ValidationError
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from routes4life_api.models import Category, Place, PlaceImage, User
+from routes4life_api.models import Place, PlaceImage, PlaceRating, User
 from routes4life_api.utils import ResetCodeManager, SessionTokenManager
 from routes4life_api.validators import (
     validate_distance,
     validate_latitude,
     validate_longitude,
+    validate_place_ordering,
     validate_rating,
 )
 
@@ -191,9 +194,6 @@ class ClientValidatePlaceSerializer(ModelSerializer):
     latitude = serializers.FloatField(validators=[validate_latitude])
     longitude = serializers.FloatField(validators=[validate_longitude])
     rating = serializers.DecimalField(3, 2, required=True, validators=[validate_rating])
-    categories = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Category.objects.all(), required=True
-    )
 
     class Meta:
         model = Place
@@ -201,17 +201,8 @@ class ClientValidatePlaceSerializer(ModelSerializer):
         extra_kwargs = {"main_image": {"required": True, "allow_null": False}}
 
 
-class CategorySerializer(ModelSerializer):
-    class Meta:
-        model = Category
-        fields = "__all__"
-
-
 class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
     rating = serializers.DecimalField(3, 2, required=True)
-    categories = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Category.objects.all(), required=True
-    )
 
     class Meta:
         model = Place
@@ -225,9 +216,7 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
         validated_data["added_by"] = self.context["user"]
         tmp_main_image = validated_data.pop("main_image")
         rating = validated_data.pop("rating")
-        categories = validated_data.pop("categories")
         instance = self.Meta.model.objects.create(**validated_data)
-        instance.categories.set(categories)
         instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         instance.ratings.create(
             user=self.context["user"], place=instance, rating=rating
@@ -238,10 +227,7 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
     def update(self, instance, validated_data):
         tmp_main_image = validated_data.pop("main_image", None)
         rating = validated_data.pop("rating", None)
-        categories = validated_data.pop("categories", None)
         instance = super().update(instance, validated_data)
-        if categories is not None:
-            instance.categories.set(categories)
         if tmp_main_image is not None:
             instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         if rating is not None:
@@ -254,7 +240,6 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
 
 class GetPlaceSerializer(ModelSerializer):
     added_by = serializers.SlugRelatedField(read_only=True, slug_field="email")
-    categories = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     rating = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     secondary_images = serializers.SerializerMethodField()
@@ -266,7 +251,7 @@ class GetPlaceSerializer(ModelSerializer):
         exclude = ["location"]
 
     def get_rating(self, current_place):
-        # NOTE: UPDATE
+        # NOTE: returns only rating by user who added this place
         queryset = current_place.ratings.filter(user=self.context["user"])
         if queryset.exists():
             return queryset[0].rating
@@ -276,7 +261,10 @@ class GetPlaceSerializer(ModelSerializer):
         return current_place.added_by == self.context["user"]
 
     def get_secondary_images(self, current_place):
-        return [[img.id, img.image.url] for img in current_place.secondary_images.all()]
+        return [
+            {"id": img.id, "url": img.image.url}
+            for img in current_place.secondary_images.all()
+        ]
 
     def get_latitude(self, current_place):
         return current_place.location.coords[1]
@@ -342,27 +330,46 @@ class PlaceFilterSerializer(Serializer):
     latitude = serializers.FloatField(required=True, validators=[validate_latitude])
     longitude = serializers.FloatField(required=True, validators=[validate_longitude])
     distance = serializers.FloatField(required=True, validators=[validate_distance])
-    categories = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Category.objects.all(), required=False
+    categories = serializers.ListField(child=serializers.CharField(max_length=50))
+    # NOTE complex logic, update in future
+    rating = serializers.DecimalField(3, 2, required=False)
+    ordering = serializers.CharField(
+        required=False, max_length=50, validators=[validate_place_ordering]
     )
-    # rating = serializers.DecimalField(3, 2, required=False)   NOTE complex logic
 
     def get_filters_applied_queryset(self):
-        qs = self.context["user"].places.all()
         data = self.validated_data
         current_point = GEOSGeometry(
             "POINT({} {})".format(data["longitude"], data["latitude"]), srid=4326
         )
-
+        qs = self.context["user"].places.filter(location__dwithin=(current_point, 0.05))
         filter_data = {}
-        if data.get("categories", None) is not None:
-            filter_data["categories__id__in"] = data["categories"]
         filter_data["location__distance_lte"] = (
             current_point,
             D(km=data["distance"]),
         )
-        print(qs)
-        print(filter_data)
+        if data.get("categories", None) is not None:
+            filter_data["category__in"] = data["categories"]
         qs = qs.filter(**filter_data)
-        print(qs)
+
+        if data.get("rating", None) is not None:
+            place_ids_to_exclude = []
+            for place in qs:
+                ratings_from_author = place.ratings.filter(user=place.added_by)
+                if (
+                    ratings_from_author.exists()
+                    and ratings_from_author[0].rating < data["rating"]
+                ):
+                    place_ids_to_exclude.append(place.id)
+            qs = qs.exclude(id__in=place_ids_to_exclude)
+        ordering = data.get("ordering", "")
+        if "distance" in ordering:
+            qs = qs.annotate(
+                distance=GeometryDistance("location", current_point)
+            ).order_by(ordering)
+        elif "rating" in ordering:
+            rating_subquery = PlaceRating.objects.filter(
+                user=self.context["user"], place=OuterRef("pk")
+            )
+            qs = qs.annotate(rating=Subquery(rating_subquery)).order_by(ordering)
         return qs

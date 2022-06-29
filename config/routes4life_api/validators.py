@@ -25,3 +25,8 @@ def validate_distance(value):
         raise ValidationError(
             {"distance": "Distance must be between 0 and 40076 kilometers."}
         )
+
+
+def validate_place_ordering(value):
+    if value not in ("distance", "-distance", "rating", "-rating"):
+        raise ValidationError({"ordering": "Unallowed value for ordering."})

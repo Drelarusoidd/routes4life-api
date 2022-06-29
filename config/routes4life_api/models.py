@@ -90,20 +90,11 @@ class Place(models.Model):
     name = models.CharField(max_length=200, blank=False)
     description = models.TextField(blank=True)
     address = models.CharField(max_length=200)
+    category = models.CharField(max_length=200, blank=False)
     location = models.PointField()
     main_image = models.ImageField(
         upload_to=upload_place_mainimg_to, blank=True, null=True
     )
-
-    def __str__(self):
-        return f"{self.id}: {self.name}"
-
-
-class Category(models.Model):
-    places = models.ManyToManyField(
-        to=Place, related_name="categories", null=True, blank=True
-    )
-    name = models.CharField(max_length=200, null=False, blank=False)
 
     def __str__(self):
         return f"{self.id}: {self.name}"

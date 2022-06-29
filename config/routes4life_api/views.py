@@ -188,9 +188,6 @@ class PlaceViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         transformed_data = convert_placedata_to_geojson(serializer.validated_data)
-        transformed_data["properties"]["categories"] = [
-            cat.pk for cat in transformed_data["properties"]["categories"]
-        ]
         inner_serializer = CreateUpdatePlaceSerializer(
             data=transformed_data, context={"user": request.user}
         )
@@ -209,10 +206,6 @@ class PlaceViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         transformed_data = convert_placedata_to_geojson(serializer.validated_data)
-        if serializer.validated_data.get("categories", None) is not None:
-            transformed_data["properties"]["categories"] = [
-                cat.pk for cat in transformed_data["properties"]["categories"]
-            ]
         inner_serializer = CreateUpdatePlaceSerializer(
             place, data=transformed_data, context={"user": request.user}, partial=True
         )
@@ -264,23 +257,23 @@ class NearestPlacesAPIView(ListAPIView):
     def get_queryset(self):
         lon = self.request.query_params.get("lon")
         lat = self.request.query_params.get("lat")
-        dist = self.request.query_params.get("dist", 100)
+        dist = self.request.query_params.get("dist", 10)
         validation_serializer = LocationSerializer(
             data={"longitude": lon, "latitude": lat, "distance": dist}
         )
         validation_serializer.is_valid(raise_exception=True)
         current_point = GEOSGeometry("POINT({} {})".format(lon, lat), srid=4326)
         return self.request.user.places.filter(
-            location__distance_lte=(current_point, D(km=dist))
-        )
+            location__dwithin=(current_point, 0.1)
+        ).filter(location__distance_lte=(current_point, D(km=dist)))
 
 
 class SearchPlacesAPIView(ListAPIView):
     serializer_class = GetPlaceSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "added_by__email", "categories__name", "address"]
-    ordering_fields = ["name", "categories__name", "address"]
+    search_fields = ["name", "category", "address"]
+    ordering_fields = ["name", "address"]
     ordering = ["name"]
 
     def get_serializer_context(self):
@@ -293,10 +286,8 @@ class SearchPlacesAPIView(ListAPIView):
 
 
 class FilterPlacesAPIView(GenericAPIView):
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "added_by__email", "categories__name", "address"]
-    ordering_fields = ["name", "categories__name", "address"]
-    ordering = ["name"]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "category", "address"]
 
     def post(self, request, *args, **kwargs):
         # POST BODY filtering
@@ -305,8 +296,9 @@ class FilterPlacesAPIView(GenericAPIView):
         )
         serializer.is_valid(raise_exception=True)
         qs = serializer.get_filters_applied_queryset()
-        # Search, pagination & ordering
+        # Search
         qs = self.filter_queryset(qs)
+        # Pagination
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = GetPlaceSerializer(page, many=True)
