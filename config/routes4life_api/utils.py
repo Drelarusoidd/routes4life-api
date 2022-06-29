@@ -59,11 +59,12 @@ def convert_placedata_to_geojson(data):
             data.pop("latitude"),
             data.pop("longitude"),
         )
+        # According to WKT standard is: POINT (x y), or POINT (Lon Lat)
         transformed_data["geometry"] = {
             "type": "Point",
             "coordinates": [
-                latitude,
                 longitude,
+                latitude,
             ],
         }
     properties = {**data}
@@ -73,6 +74,7 @@ def convert_placedata_to_geojson(data):
 
 
 def custom_exception_handler(exc, context):
+    # NOTE: UPDATE
     response = exception_handler(exc, context)
     if response is not None:
         newdata = dict()

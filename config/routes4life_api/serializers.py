@@ -3,14 +3,24 @@ import string
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import BaseUserManager
+from django.contrib.gis.db.models import OuterRef, Subquery
+from django.contrib.gis.db.models.functions import GeometryDistance
+from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import D
 from django.core.mail import send_mail
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-from rest_framework.serializers import ModelSerializer, Serializer
+from rest_framework.serializers import ModelSerializer, Serializer, ValidationError
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from routes4life_api.models import Place, PlaceImages, User
+from routes4life_api.models import Place, PlaceImage, PlaceRating, User
 from routes4life_api.utils import ResetCodeManager, SessionTokenManager
+from routes4life_api.validators import (
+    validate_distance,
+    validate_latitude,
+    validate_longitude,
+    validate_place_ordering,
+    validate_rating,
+)
 
 
 class RegisterUserSerializer(ModelSerializer):
@@ -61,8 +71,12 @@ class ChangePasswordSerializer(ModelSerializer):
         super(ChangePasswordSerializer, self).__init__(*args, **kwargs)
 
     def validate(self, raw_data):
-        if check_password(raw_data["password"], self.instance.password) is False:
+        if not check_password(raw_data["password"], self.instance.password):
             raise serializers.ValidationError("Old password is incorrect!")
+        if check_password(raw_data["new_password"], self.instance.password):
+            raise serializers.ValidationError(
+                "Changing to the same password is not allowed!"
+            )
         if raw_data["new_password"] != raw_data["confirmation_password"]:
             raise serializers.ValidationError("New passwords don't match!")
         return raw_data
@@ -170,26 +184,21 @@ class UserInfoSerializer(ModelSerializer):
         super().save(**kwargs)
 
 
-# TO BE REMOVED
 class LocationSerializer(Serializer):
-    # latitude, longitude
-    location = serializers.DictField(child=serializers.DecimalField(20, 15))
-
-    def validate(self, raw_data):
-        inner_keys = raw_data["location"].keys()
-        if "latitude" not in inner_keys and "longitude" not in inner_keys:
-            raise ValidationError("You must provide latitude and longitude fields.")
-        return raw_data
+    latitude = serializers.FloatField(required=True, validators=[validate_latitude])
+    longitude = serializers.FloatField(required=True, validators=[validate_longitude])
+    distance = serializers.FloatField(required=False, validators=[validate_distance])
 
 
 class ClientValidatePlaceSerializer(ModelSerializer):
-    latitude = serializers.FloatField()
-    longitude = serializers.FloatField()
-    rating = serializers.DecimalField(3, 2, required=True)
+    latitude = serializers.FloatField(validators=[validate_latitude])
+    longitude = serializers.FloatField(validators=[validate_longitude])
+    rating = serializers.DecimalField(3, 2, required=True, validators=[validate_rating])
 
     class Meta:
         model = Place
         exclude = ("location", "added_by")
+        extra_kwargs = {"main_image": {"required": True, "allow_null": False}}
 
 
 class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
@@ -205,11 +214,10 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
 
     def create(self, validated_data):
         validated_data["added_by"] = self.context["user"]
-        tmp_main_image = validated_data.pop("main_image", None)
+        tmp_main_image = validated_data.pop("main_image")
         rating = validated_data.pop("rating")
         instance = self.Meta.model.objects.create(**validated_data)
-        if tmp_main_image is not None:
-            instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
+        instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         instance.ratings.create(
             user=self.context["user"], place=instance, rating=rating
         )
@@ -219,7 +227,7 @@ class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
     def update(self, instance, validated_data):
         tmp_main_image = validated_data.pop("main_image", None)
         rating = validated_data.pop("rating", None)
-        super().update(instance, validated_data)
+        instance = super().update(instance, validated_data)
         if tmp_main_image is not None:
             instance.main_image.save(tmp_main_image.name, tmp_main_image.file, True)
         if rating is not None:
@@ -235,13 +243,15 @@ class GetPlaceSerializer(ModelSerializer):
     rating = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     secondary_images = serializers.SerializerMethodField()
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
 
     class Meta:
         model = Place
-        fields = "__all__"
+        exclude = ["location"]
 
     def get_rating(self, current_place):
-        # NOTE: update in future!!!
+        # NOTE: returns only rating by user who added this place
         queryset = current_place.ratings.filter(user=self.context["user"])
         if queryset.exists():
             return queryset[0].rating
@@ -252,57 +262,116 @@ class GetPlaceSerializer(ModelSerializer):
 
     def get_secondary_images(self, current_place):
         return [
-            [img.id, img.image.url]
-            for img in current_place.secondary_images.filter(place=current_place)
+            {"id": img.id, "url": img.image.url}
+            for img in current_place.secondary_images.all()
         ]
 
+    def get_latitude(self, current_place):
+        return current_place.location.coords[1]
 
-class AddPlaceImagesSerializer(Serializer):
-    images = serializers.ListField(child=serializers.ImageField(), required=True)
+    def get_longitude(self, current_place):
+        return current_place.location.coords[0]
+
+
+class UpdatePlaceImagesSerializer(Serializer):
+    images_to_upload = serializers.ListField(
+        child=serializers.ImageField(), required=False
+    )
+    image_ids_to_delete = serializers.ListField(
+        child=serializers.IntegerField(), required=False
+    )
 
     def validate(self, raw_data):
         place = self.context["place"]
-        print(
-            f"place[id={place.id}].secondary_images.all()="
-            + f"{[img for img in place.secondary_images.all()]}"
+        if raw_data.get("images_to_upload", None) is None:
+            raw_data["images_to_upload"] = []
+        if raw_data.get("image_ids_to_delete", None) is None:
+            raw_data["image_ids_to_delete"] = []
+        # remove duplicates
+        raw_data["image_ids_to_delete"] = list(set(raw_data["image_ids_to_delete"]))
+
+        num_delete = place.secondary_images.all().count() - len(
+            raw_data["image_ids_to_delete"]
         )
-        if place.secondary_images.all().count() + len(raw_data["images"]) > 10:
+        if num_delete < 0:
             raise ValidationError(
-                {"images": "Total of secondary images has to be less or equal to 10!"}
+                {"image_ids_to_delete": "You want to remove more images than there is!"}
+            )
+        for _id in raw_data["image_ids_to_delete"]:
+            if _id not in place.secondary_images.values_list("id", flat=True):
+                raise ValidationError({"image_ids_to_delete": "Some ids do not exist."})
+
+        num_upload = place.secondary_images.all().count() + len(
+            raw_data["images_to_upload"]
+        )
+        if num_upload > 10:
+            raise ValidationError(
+                {
+                    "images_to_upload": "Total of secondary images has to be less or equal to 10!"
+                }
             )
         return raw_data
 
-    def create(self):
+    def save(self):
         place = self.context["place"]
-        for image in self.validated_data["images"]:
-            instance = PlaceImages.objects.create(place=place)
+        place_images = place.secondary_images.all()
+        for _id in self.validated_data["image_ids_to_delete"]:
+            place_images.get(pk=_id).delete()
+        place.refresh_from_db()
+
+        for image in self.validated_data["images_to_upload"]:
+            instance = PlaceImage.objects.create(place=place)
             instance.image.save(image.name, image.file, True)
         place.refresh_from_db()
         return place
 
 
-class RemovePlaceImagesSerializer(Serializer):
-    image_ids = serializers.ListField(child=serializers.IntegerField(), required=True)
+class PlaceFilterSerializer(Serializer):
+    latitude = serializers.FloatField(required=True, validators=[validate_latitude])
+    longitude = serializers.FloatField(required=True, validators=[validate_longitude])
+    distance = serializers.FloatField(required=True, validators=[validate_distance])
+    categories = serializers.ListField(
+        required=False, child=serializers.CharField(max_length=50)
+    )
+    # NOTE complex logic, update in future
+    rating = serializers.DecimalField(3, 2, required=False)
+    ordering = serializers.CharField(
+        required=False, max_length=50, validators=[validate_place_ordering]
+    )
 
-    def validate(self, raw_data):
-        place = self.context["place"]
-        print(
-            f"place[id={place.id}].secondary_images.all()="
-            + f"{[img for img in place.secondary_images.all()]}"
+    def get_filters_applied_queryset(self):
+        data = self.validated_data
+        current_point = GEOSGeometry(
+            "POINT({} {})".format(data["longitude"], data["latitude"]), srid=4326
         )
-        if place.secondary_images.all().count() - len(raw_data["image_ids"]) < 0:
-            raise ValidationError(
-                {"image_ids": "You want to remove more images than there is!"}
-            )
-        for place_image in place.secondary_images.all():
-            if place_image.id not in raw_data["image_ids"]:
-                raise ValidationError({"image_ids": "Some ids do not exist."})
-        return raw_data
+        qs = self.context["user"].places.filter(location__dwithin=(current_point, 0.05))
+        filter_data = {}
+        filter_data["location__distance_lte"] = (
+            current_point,
+            D(km=data["distance"]),
+        )
+        if data.get("categories", None) is not None:
+            filter_data["category__in"] = data["categories"]
+        qs = qs.filter(**filter_data)
 
-    def delete(self):
-        place = self.context["place"]
-        place_images = place.secondary_images.all()
-        for _id in self.validated_data["image_ids"]:
-            place_images.get(pk=_id).delete()
-        place.refresh_from_db()
-        return place
+        if data.get("rating", None) is not None:
+            place_ids_to_exclude = []
+            for place in qs:
+                ratings_from_author = place.ratings.filter(user=place.added_by)
+                if (
+                    ratings_from_author.exists()
+                    and ratings_from_author[0].rating < data["rating"]
+                ):
+                    place_ids_to_exclude.append(place.id)
+            qs = qs.exclude(id__in=place_ids_to_exclude)
+        ordering = data.get("ordering", "")
+        if "distance" in ordering:
+            qs = qs.annotate(
+                distance=GeometryDistance("location", current_point)
+            ).order_by(ordering)
+        elif "rating" in ordering:
+            rating_subquery = PlaceRating.objects.filter(
+                user=self.context["user"], place=OuterRef("pk")
+            )
+            qs = qs.annotate(rating=Subquery(rating_subquery)).order_by(ordering)
+        return qs

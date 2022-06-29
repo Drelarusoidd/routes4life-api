@@ -150,9 +150,9 @@ def test_change_password_serializer(user_factory):
     )
     assert serializer.is_valid()
     assert check_password(new_password, serializer.save().password)
+    password = new_password
 
     # Check for blank password
-    password = new_password
     new_password = ""
     serializer = ChangePasswordSerializer(
         instance=test_user,
@@ -164,7 +164,18 @@ def test_change_password_serializer(user_factory):
     )
     assert serializer.is_valid() is False
 
-    # Check for not matching passwords
+    # Check for setting the same password that user owns
+    serializer = ChangePasswordSerializer(
+        instance=test_user,
+        data={
+            "password": password,
+            "new_password": password,
+            "confirmation_password": password,
+        },
+    )
+    assert serializer.is_valid() is False
+
+    # Check for non-matching passwords
     new_password = "234567890"
     confirmation_password = "123456789"
     serializer = ChangePasswordSerializer(

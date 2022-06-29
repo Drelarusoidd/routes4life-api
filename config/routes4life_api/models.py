@@ -84,22 +84,30 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Place(models.Model):
-    added_by = models.ForeignKey(to=User, on_delete=models.CASCADE)
+    added_by = models.ForeignKey(
+        to=User, on_delete=models.CASCADE, related_name="places"
+    )
     name = models.CharField(max_length=200, blank=False)
-    category = models.CharField(max_length=100, blank=False)
     description = models.TextField(blank=True)
     address = models.CharField(max_length=200)
+    category = models.CharField(max_length=200, blank=False)
     location = models.PointField()
     main_image = models.ImageField(
         upload_to=upload_place_mainimg_to, blank=True, null=True
     )
 
+    def __str__(self):
+        return f"{self.id}: {self.name}"
 
-class PlaceImages(models.Model):
+
+class PlaceImage(models.Model):
     place = models.ForeignKey(
         to=Place, on_delete=models.CASCADE, related_name="secondary_images"
     )
     image = models.ImageField(upload_to=upload_place_secimg_to, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.id}: To place {str(self.place)}"
 
 
 class PlaceRating(models.Model):
@@ -108,6 +116,9 @@ class PlaceRating(models.Model):
         to=Place, on_delete=models.CASCADE, related_name="ratings"
     )
     rating = models.DecimalField(max_digits=3, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.id}, {self.rating}: To place {str(self.place)}"
 
 
 # SIGNAL RECEIVERS
@@ -125,7 +136,7 @@ def remove_place_mainimage_on_delete(sender, instance, using, **kwargs):
     return True
 
 
-@receiver(models.signals.post_delete, sender=PlaceImages)
+@receiver(models.signals.post_delete, sender=PlaceImage)
 def remove_place_image_on_delete(sender, instance, using, **kwargs):
     if instance.image is not None:
         instance.image.delete(save=False)
