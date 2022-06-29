@@ -330,7 +330,9 @@ class PlaceFilterSerializer(Serializer):
     latitude = serializers.FloatField(required=True, validators=[validate_latitude])
     longitude = serializers.FloatField(required=True, validators=[validate_longitude])
     distance = serializers.FloatField(required=True, validators=[validate_distance])
-    categories = serializers.ListField(child=serializers.CharField(max_length=50))
+    categories = serializers.ListField(
+        required=False, child=serializers.CharField(max_length=50)
+    )
     # NOTE complex logic, update in future
     rating = serializers.DecimalField(3, 2, required=False)
     ordering = serializers.CharField(
