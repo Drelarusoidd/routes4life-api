@@ -2,8 +2,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.shortcuts import get_object_or_404
-
-# from django.views.decorators.csrf import csrf_exempt
 from rest_framework import filters, viewsets
 from rest_framework.decorators import (
     action,
@@ -305,3 +303,25 @@ class FilterPlacesAPIView(GenericAPIView):
             return self.get_paginated_response(serializer.data)
         serializer = GetPlaceSerializer(qs, many=True, context={"user": request.user})
         return Response(serializer.data)
+
+
+class GetPlacesByOneCategoryAPIView(ListAPIView):
+    serializer_class = GetPlaceSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["=category"]
+
+    def get_queryset(self):
+        return self.request.user.places.all()
+
+    def get_serializer_context(self):
+        return {
+            "request": self.request,
+            "format": self.format_kwarg,
+            "view": self,
+            "user": self.request.user,
+        }
+
+
+class GetPlacesSplitByCategoriesAPIView(GenericAPIView):
+    pass
