@@ -74,16 +74,25 @@ def convert_placedata_to_geojson(data):
 
 
 def custom_exception_handler(exc, context):
-    # NOTE: UPDATE
+    newdata = dict()
+    newdata["errors"] = []
+
+    def get_list_from_errors(data):
+        to_return = []
+        if not isinstance(data, (list, dict)):
+            to_return.append(data)
+        elif isinstance(data, list):
+            for err in data:
+                to_return.extend(get_list_from_errors(err))
+        elif isinstance(data, dict):
+            for err in data.values():
+                to_return.extend(get_list_from_errors(err))
+        return to_return
+
     response = exception_handler(exc, context)
     if response is not None:
-        newdata = dict()
-        newdata["errors"] = []
-        for err in response.data.values():
-            if isinstance(err, (list, tuple)):
-                newdata["errors"].extend(err)
-            else:
-                newdata["errors"].append(err)
+        newdata["errors"].extend(get_list_from_errors(response.data))
+        newdata["old_repr"] = response.data
         response.data = newdata
     return response
 
