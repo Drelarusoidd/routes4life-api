@@ -1,3 +1,6 @@
+from itertools import groupby
+from operator import itemgetter
+
 from django.contrib.auth import get_user_model
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
@@ -284,24 +287,41 @@ class SearchPlacesAPIView(ListAPIView):
 
 
 class FilterPlacesAPIView(GenericAPIView):
+    """
+    If filters were applied, return
+    """
+
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "category", "address"]
 
     def post(self, request, *args, **kwargs):
-        # POST BODY filtering
-        serializer = PlaceFilterSerializer(
-            data=request.data, context={"user": request.user}
-        )
-        serializer.is_valid(raise_exception=True)
-        qs = serializer.get_filters_applied_queryset()
+        filters_applied = bool(request.data != {})
+        if filters_applied:
+            # POST BODY filtering
+            serializer = PlaceFilterSerializer(
+                data=request.data, context={"user": request.user}
+            )
+            serializer.is_valid(raise_exception=True)
+            qs = serializer.get_filters_applied_queryset()
+        else:
+            qs = request.user.places.all()
         # Search
         qs = self.filter_queryset(qs)
-        # Pagination
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            serializer = GetPlaceSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+
+        # # Pagination
+        # page = self.paginate_queryset(qs)
+        # if page is not None:
+        #     serializer = GetPlaceSerializer(page, many=True)
+        #     return self.get_paginated_response(serializer.data)
+
         serializer = GetPlaceSerializer(qs, many=True, context={"user": request.user})
+        # transform data to needed format
+        if not filters_applied:
+            data = sorted(serializer.data, key=itemgetter("category"))
+            data_split_by_categories = {}
+            for k, g in groupby(data, itemgetter("category")):
+                data_split_by_categories[k] = list(g)
+            return Response(data_split_by_categories)
         return Response(serializer.data)
 
 
@@ -321,7 +341,3 @@ class GetPlacesByOneCategoryAPIView(ListAPIView):
             "view": self,
             "user": self.request.user,
         }
-
-
-class GetPlacesSplitByCategoriesAPIView(GenericAPIView):
-    pass
