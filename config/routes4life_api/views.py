@@ -1,7 +1,5 @@
-from itertools import groupby
-from operator import itemgetter
-
 from django.contrib.auth import get_user_model
+from django.contrib.gis.db.models import Count
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.shortcuts import get_object_or_404
@@ -303,26 +301,40 @@ class FilterPlacesAPIView(GenericAPIView):
             )
             serializer.is_valid(raise_exception=True)
             qs = serializer.get_filters_applied_queryset()
-        else:
-            qs = request.user.places.all()
-        # Search
-        qs = self.filter_queryset(qs)
+            # Search
+            qs = self.filter_queryset(qs)
+            # Pagination
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = GetPlaceSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = GetPlaceSerializer(
+                qs, many=True, context={"user": request.user}
+            )
+            return Response(
+                {"filters_applied": filters_applied, "places": serializer.data}
+            )
 
-        # # Pagination
-        # page = self.paginate_queryset(qs)
-        # if page is not None:
-        #     serializer = GetPlaceSerializer(page, many=True)
-        #     return self.get_paginated_response(serializer.data)
-
-        serializer = GetPlaceSerializer(qs, many=True, context={"user": request.user})
-        # transform data to needed format
-        if not filters_applied:
-            data = sorted(serializer.data, key=itemgetter("category"))
-            data_split_by_categories = {}
-            for k, g in groupby(data, itemgetter("category")):
-                data_split_by_categories[k] = list(g)
-            return Response(data_split_by_categories)
-        return Response(serializer.data)
+        categories = request.user.places.values("category").annotate(Count("category"))
+        categories = dict(
+            (
+                (
+                    item["category"],
+                    request.user.places.filter(category=item["category"])[:10],
+                )
+                for item in categories
+                if item["category__count"]
+            )
+        )
+        data_split_by_categories = {}
+        for k, qs in categories.items():
+            serializer = GetPlaceSerializer(
+                qs, many=True, context={"user": request.user}
+            )
+            data_split_by_categories[k] = serializer.data
+        return Response(
+            {"filters_applied": filters_applied, **data_split_by_categories}
+        )
 
 
 class GetPlacesByOneCategoryAPIView(ListAPIView):
