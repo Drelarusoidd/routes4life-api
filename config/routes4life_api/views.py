@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.gis.db.models import Count
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
 from django.shortcuts import get_object_or_404
@@ -284,25 +285,56 @@ class SearchPlacesAPIView(ListAPIView):
 
 
 class FilterPlacesAPIView(GenericAPIView):
+    """
+    If filters were applied, return
+    """
+
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "category", "address"]
 
     def post(self, request, *args, **kwargs):
-        # POST BODY filtering
-        serializer = PlaceFilterSerializer(
-            data=request.data, context={"user": request.user}
+        filters_applied = bool(request.data != {})
+        if filters_applied:
+            # POST BODY filtering
+            serializer = PlaceFilterSerializer(
+                data=request.data, context={"user": request.user}
+            )
+            serializer.is_valid(raise_exception=True)
+            qs = serializer.get_filters_applied_queryset()
+            # Search
+            qs = self.filter_queryset(qs)
+            # Pagination
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = GetPlaceSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = GetPlaceSerializer(
+                qs, many=True, context={"user": request.user}
+            )
+            return Response(
+                {"filters_applied": filters_applied, "places": serializer.data}
+            )
+
+        categories = request.user.places.values("category").annotate(Count("category"))
+        categories = dict(
+            (
+                (
+                    item["category"],
+                    request.user.places.filter(category=item["category"])[:10],
+                )
+                for item in categories
+                if item["category__count"]
+            )
         )
-        serializer.is_valid(raise_exception=True)
-        qs = serializer.get_filters_applied_queryset()
-        # Search
-        qs = self.filter_queryset(qs)
-        # Pagination
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            serializer = GetPlaceSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = GetPlaceSerializer(qs, many=True, context={"user": request.user})
-        return Response(serializer.data)
+        data_split_by_categories = {}
+        for k, qs in categories.items():
+            serializer = GetPlaceSerializer(
+                qs, many=True, context={"user": request.user}
+            )
+            data_split_by_categories[k] = serializer.data
+        return Response(
+            {"filters_applied": filters_applied, **data_split_by_categories}
+        )
 
 
 class GetPlacesByOneCategoryAPIView(ListAPIView):
@@ -321,7 +353,3 @@ class GetPlacesByOneCategoryAPIView(ListAPIView):
             "view": self,
             "user": self.request.user,
         }
-
-
-class GetPlacesSplitByCategoriesAPIView(GenericAPIView):
-    pass
