@@ -3,7 +3,8 @@ import string
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import BaseUserManager
-from django.contrib.gis.db.models import OuterRef, Subquery
+from django.contrib.gis.db import models
+from django.contrib.gis.db.models import Avg, OuterRef
 from django.contrib.gis.db.models.functions import GeometryDistance
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
@@ -372,8 +373,10 @@ class PlaceFilterSerializer(Serializer):
         elif "rating" in ordering:
             rating_subquery = PlaceRating.objects.filter(
                 user=self.context["user"], place=OuterRef("pk")
-            )
-            qs = qs.annotate(rating=Subquery(rating_subquery)).order_by(ordering)
+            ).values("rating")
+            qs = qs.annotate(
+                rating=Avg(rating_subquery, output_field=models.FloatField())
+            ).order_by(ordering)
         return qs
 
 
@@ -433,6 +436,8 @@ class PlaceFilterNewSerializer(Serializer):
         elif "rating" in ordering:
             rating_subquery = PlaceRating.objects.filter(
                 user=self.context["user"], place=OuterRef("pk")
-            )
-            qs = qs.annotate(rating=Subquery(rating_subquery)).order_by(ordering)
+            ).values("rating")
+            qs = qs.annotate(
+                rating=Avg(rating_subquery, output_field=models.FloatField())
+            ).order_by(ordering)
         return qs
