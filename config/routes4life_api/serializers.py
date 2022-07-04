@@ -3,7 +3,8 @@ import string
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import BaseUserManager
-from django.contrib.gis.db.models import OuterRef, Subquery
+from django.contrib.gis.db import models
+from django.contrib.gis.db.models import Avg, OuterRef
 from django.contrib.gis.db.models.functions import GeometryDistance
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
@@ -372,6 +373,71 @@ class PlaceFilterSerializer(Serializer):
         elif "rating" in ordering:
             rating_subquery = PlaceRating.objects.filter(
                 user=self.context["user"], place=OuterRef("pk")
-            )
-            qs = qs.annotate(rating=Subquery(rating_subquery)).order_by(ordering)
+            ).values("rating")
+            qs = qs.annotate(
+                rating=Avg(rating_subquery, output_field=models.FloatField())
+            ).order_by(ordering)
+        return qs
+
+
+class PlaceFilterNewSerializer(Serializer):
+    apply_filters = serializers.BooleanField(required=True)
+    split_categories = serializers.BooleanField(required=True)
+    latitude = serializers.FloatField(required=True, validators=[validate_latitude])
+    longitude = serializers.FloatField(required=True, validators=[validate_longitude])
+    distance = serializers.FloatField(required=False, validators=[validate_distance])
+    categories = serializers.ListField(
+        required=False, child=serializers.CharField(max_length=50)
+    )
+    # NOTE complex logic, update in future
+    rating = serializers.DecimalField(3, 2, required=False)
+    ordering = serializers.CharField(
+        required=False, max_length=50, validators=[validate_place_ordering]
+    )
+
+    def get_filters_applied_queryset(self):
+        data = self.validated_data
+        current_point = GEOSGeometry(
+            "POINT({} {})".format(data["longitude"], data["latitude"]), srid=4326
+        )
+        qs = self.context["user"].places.filter(location__dwithin=(current_point, 0.05))
+        if not data["apply_filters"]:
+            return qs
+
+        filter_data = {}
+        dist = (
+            data.get("distance", None)
+            if data.get("distance", None) is not None
+            else 5.0
+        )
+        filter_data["location__distance_lte"] = (
+            current_point,
+            D(km=dist),
+        )
+        if data.get("categories", None) is not None:
+            filter_data["category__in"] = data["categories"]
+        qs = qs.filter(**filter_data)
+
+        if data.get("rating", None) is not None:
+            place_ids_to_exclude = []
+            for place in qs:
+                ratings_from_author = place.ratings.filter(user=place.added_by)
+                if (
+                    ratings_from_author.exists()
+                    and ratings_from_author[0].rating < data["rating"]
+                ):
+                    place_ids_to_exclude.append(place.id)
+            qs = qs.exclude(id__in=place_ids_to_exclude)
+        ordering = data.get("ordering", "")
+        if "distance" in ordering:
+            qs = qs.annotate(
+                distance=GeometryDistance("location", current_point)
+            ).order_by(ordering)
+        elif "rating" in ordering:
+            rating_subquery = PlaceRating.objects.filter(
+                user=self.context["user"], place=OuterRef("pk")
+            ).values("rating")
+            qs = qs.annotate(
+                rating=Avg(rating_subquery, output_field=models.FloatField())
+            ).order_by(ordering)
         return qs

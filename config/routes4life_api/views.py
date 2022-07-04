@@ -27,6 +27,7 @@ from routes4life_api.serializers import (
     FindEmailSerializer,
     GetPlaceSerializer,
     LocationSerializer,
+    PlaceFilterNewSerializer,
     PlaceFilterSerializer,
     RegisterUserSerializer,
     UpdateEmailSerializer,
@@ -286,11 +287,13 @@ class SearchPlacesAPIView(ListAPIView):
 
 class FilterPlacesAPIView(GenericAPIView):
     """
-    If filters were applied, return
+    If filters were applied, return list.
+    If filters were not applied, return split by categories lists.
     """
 
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "category", "address"]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         filters_applied = bool(request.data != {})
@@ -334,6 +337,72 @@ class FilterPlacesAPIView(GenericAPIView):
             data_split_by_categories[k] = serializer.data
         return Response(
             {"filters_applied": filters_applied, **data_split_by_categories}
+        )
+
+
+class FilterPlacesNewAPIView(GenericAPIView):
+    """
+    If filters were applied, return list.
+    If filters were not applied, return split by categories lists.
+    But here we do it manually by passing additional param.
+    """
+
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "category", "address"]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PlaceFilterNewSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+        filters_applied = serializer.validated_data["apply_filters"]
+        qs_categ_split = serializer.validated_data["split_categories"]
+
+        qs = serializer.get_filters_applied_queryset()
+        # Search
+        qs = self.filter_queryset(qs)
+
+        if not qs_categ_split:
+            # Pagination
+            page = self.paginate_queryset(qs)
+            if page is not None:
+                serializer = GetPlaceSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            serializer = GetPlaceSerializer(
+                qs, many=True, context={"user": request.user}
+            )
+            return Response(
+                {
+                    "filters_applied": filters_applied,
+                    "is_split": qs_categ_split,
+                    "places": serializer.data,
+                }
+            )
+
+        categories = qs.values("category").annotate(Count("category"))
+        categories = dict(
+            (
+                (
+                    item["category"],
+                    qs.filter(category=item["category"])[:10],
+                )
+                for item in categories
+                if item["category__count"]
+            )
+        )
+        data_split_by_categories = {}
+        for k, qs in categories.items():
+            serializer = GetPlaceSerializer(
+                qs, many=True, context={"user": request.user}
+            )
+            data_split_by_categories[k] = serializer.data
+        return Response(
+            {
+                "filters_applied": filters_applied,
+                "is_split": qs_categ_split,
+                **data_split_by_categories,
+            }
         )
 
 
