@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from routes4life_api.views import (
     FilterPlacesAPIView,
+    FilterPlacesNewAPIView,
     ForgotPasswordViewSet,
     GetPlacesByOneCategoryAPIView,
     NearestPlacesAPIView,
@@ -74,6 +75,9 @@ urlpatterns = [
     ),
     path("places/search/", SearchPlacesAPIView.as_view(), name="search_places"),
     path("places/filter/", FilterPlacesAPIView.as_view(), name="filter_places"),
+    path(
+        "places/new_filter/", FilterPlacesNewAPIView.as_view(), name="filter_places_new"
+    ),
     path(
         "places/by_category/",
         GetPlacesByOneCategoryAPIView.as_view(),
