@@ -400,7 +400,10 @@ class PlaceFilterNewSerializer(Serializer):
         current_point = GEOSGeometry(
             "POINT({} {})".format(data["longitude"], data["latitude"]), srid=4326
         )
-        qs = self.context["user"].places.filter(location__dwithin=(current_point, 0.05))
+        if data["apply_filters"]:
+            qs = self.context["user"].places.filter(location__dwithin=(current_point, 0.05))
+        else:
+            qs = self.context["user"].places.all()
         if not data["apply_filters"]:
             return qs
 
