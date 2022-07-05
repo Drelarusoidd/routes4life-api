@@ -334,7 +334,7 @@ class FilterPlacesAPIView(GenericAPIView):
             serializer = GetPlaceSerializer(
                 qs, many=True, context={"user": request.user}
             )
-            data_split_by_categories[k] = serializer.data
+            data_split_by_categories[k.lower()] = serializer.data
         return Response(
             {"filters_applied": filters_applied, **data_split_by_categories}
         )
@@ -396,7 +396,7 @@ class FilterPlacesNewAPIView(GenericAPIView):
             serializer = GetPlaceSerializer(
                 qs, many=True, context={"user": request.user}
             )
-            data_split_by_categories[k] = serializer.data
+            data_split_by_categories[k.lower()] = serializer.data
         return Response(
             {
                 "filters_applied": filters_applied,
