@@ -16,6 +16,7 @@ from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from routes4life_api.models import Place, PlaceImage, PlaceRating, User
 from routes4life_api.utils import ResetCodeManager, SessionTokenManager
 from routes4life_api.validators import (
+    validate_category,
     validate_distance,
     validate_latitude,
     validate_longitude,
@@ -195,11 +196,17 @@ class ClientValidatePlaceSerializer(ModelSerializer):
     latitude = serializers.FloatField(validators=[validate_latitude])
     longitude = serializers.FloatField(validators=[validate_longitude])
     rating = serializers.DecimalField(3, 2, required=True, validators=[validate_rating])
+    secondary_images = serializers.ListField(
+        child=serializers.ImageField(), required=False
+    )
 
     class Meta:
         model = Place
         exclude = ("location", "added_by")
-        extra_kwargs = {"main_image": {"required": True, "allow_null": False}}
+        extra_kwargs = {
+            "main_image": {"required": True, "allow_null": False},
+            "category": {"validators": [validate_category]},
+        }
 
 
 class CreateUpdatePlaceSerializer(GeoFeatureModelSerializer):
@@ -400,7 +407,12 @@ class PlaceFilterNewSerializer(Serializer):
         current_point = GEOSGeometry(
             "POINT({} {})".format(data["longitude"], data["latitude"]), srid=4326
         )
-        qs = self.context["user"].places.filter(location__dwithin=(current_point, 0.05))
+        if data["apply_filters"]:
+            qs = self.context["user"].places.filter(
+                location__dwithin=(current_point, 0.05)
+            )
+        else:
+            qs = self.context["user"].places.all()
         if not data["apply_filters"]:
             return qs
 

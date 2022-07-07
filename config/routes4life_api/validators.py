@@ -30,3 +30,20 @@ def validate_distance(value):
 def validate_place_ordering(value):
     if value not in ("distance", "-distance", "rating", "-rating"):
         raise ValidationError({"ordering": "Unallowed value for ordering."})
+
+
+def validate_category(value):
+    allowed_categories = [
+        "barsAndPubs",
+        "hookahBars",
+        "cafesAndRestaurants",
+        "coffeeHouses",
+        "pastryShopsAndBakeries",
+        "attractions",
+        "art",
+        "city",
+        "sport",
+        "other",
+    ]
+    if value not in allowed_categories:
+        raise ValidationError({"category": "Unallowed category."})
