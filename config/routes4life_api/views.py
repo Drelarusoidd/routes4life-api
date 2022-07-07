@@ -184,15 +184,29 @@ class PlaceViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=["post"])
     def create_place(self, request):
-        serializer = ClientValidatePlaceSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        client_data_serializer = ClientValidatePlaceSerializer(data=request.data)
+        client_data_serializer.is_valid(raise_exception=True)
 
-        transformed_data = convert_placedata_to_geojson(serializer.validated_data)
+        transformed_data = convert_placedata_to_geojson(
+            client_data_serializer.validated_data
+        )
         inner_serializer = CreateUpdatePlaceSerializer(
             data=transformed_data, context={"user": request.user}
         )
         inner_serializer.is_valid(raise_exception=True)
         place = inner_serializer.save()
+
+        if "secondary_images" in transformed_data["properties"]:
+            secimg_serailizer = UpdatePlaceImagesSerializer(
+                data={
+                    "images_to_upload": transformed_data["properties"][
+                        "secondary_images"
+                    ]
+                },
+                context={"place": place},
+            )
+            secimg_serailizer.is_valid(raise_exception=True)
+            place = secimg_serailizer.save()
 
         response_serializer = GetPlaceSerializer(place, context={"user": request.user})
         return Response(response_serializer.data, 201)

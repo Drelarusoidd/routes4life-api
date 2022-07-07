@@ -196,6 +196,9 @@ class ClientValidatePlaceSerializer(ModelSerializer):
     latitude = serializers.FloatField(validators=[validate_latitude])
     longitude = serializers.FloatField(validators=[validate_longitude])
     rating = serializers.DecimalField(3, 2, required=True, validators=[validate_rating])
+    secondary_images = serializers.ListField(
+        child=serializers.ImageField(), required=False
+    )
 
     class Meta:
         model = Place
