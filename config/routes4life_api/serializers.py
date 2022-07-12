@@ -173,8 +173,15 @@ class CodeWithEmailSerializer(Serializer):
 class UserInfoSerializer(ModelSerializer):
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "phone_number", "avatar")
-        read_only_fields = ("email",)
+        fields = (
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "avatar",
+            "is_premium",
+        )
+        read_only_fields = ("email", "is_premium")
         extra_kwargs = {"phone_number": {"required": False}}
 
     def save(self, **kwargs):

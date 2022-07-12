@@ -72,6 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
     avatar = models.ImageField(upload_to=upload_avatar_to, blank=True, null=True)
+    is_premium = models.BooleanField(default=False, null=False, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
