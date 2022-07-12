@@ -115,6 +115,69 @@ def test_change_email(client, user_factory):
 
 
 @pytest.mark.django_db
+def test_change_password(client, user_factory):
+    fake = Faker()
+    user = user_factory.create()
+    password = fake.password()
+    new_password = fake.password()
+    user.set_password(password)
+    assert user.check_password(password)
+    user.save()
+
+    response = client.post(
+        path="/api/auth/get-token/", data={"email": user.email, "password": password}
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert "access" in response_data.keys()
+    access_token = response_data["access"]  # token obtained
+
+    # Unauthorized
+    response = client.patch(
+        path="/api/auth/change-password/",
+        data={
+            "password": password,
+            "newPassword": new_password,
+            "confirmationPassword": new_password,
+        },
+    )
+    assert response.status_code == 401
+
+    # Normal request
+    response = client.patch(
+        path="/api/auth/change-password/",
+        data={
+            "password": password,
+            "newPassword": new_password,
+            "confirmationPassword": new_password,
+        },
+        content_type="application/json",
+        **{
+            "HTTP_AUTHORIZATION": f"JWT {access_token}",
+        },
+    )
+    assert response.status_code == 200
+    password = new_password
+    user.refresh_from_db()
+    assert user.check_password(password)
+
+    # Non-matching passwords
+    response = client.patch(
+        path="/api/auth/change-password/",
+        data={
+            "password": password,
+            "newPassword": new_password + "nonmatch",
+            "confirmationPassword": new_password,
+        },
+        content_type="application/json",
+        **{
+            "HTTP_AUTHORIZATION": f"JWT {access_token}",
+        },
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
 def test_reset_password_flow(client, user_factory):
     fake = Faker()
     user = user_factory.create()
