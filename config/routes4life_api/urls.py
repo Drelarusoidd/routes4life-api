@@ -13,6 +13,7 @@ from routes4life_api.views import (
     UpdatePlaceSecondaryImagesAPIView,
     UserInfoViewSet,
     change_my_email,
+    change_my_password,
     homepage,
 )
 
@@ -20,6 +21,7 @@ urlpatterns = [
     path("auth/get-token/", TokenObtainPairView.as_view(), name="get_token_pair"),
     path("auth/signup/", RegisterAPIView.as_view(), name="register"),
     path("auth/change-email/", change_my_email, name="change_email"),
+    path("auth/change-password/", change_my_password, name="change_password"),
     path(
         "auth/reset-password/",
         ForgotPasswordViewSet.as_view(

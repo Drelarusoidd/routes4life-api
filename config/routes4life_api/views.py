@@ -75,30 +75,36 @@ def change_my_email(request):
     )
 
 
+@api_view(["PATCH"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def change_my_password(request):
+    serializer = ChangePasswordSerializer(
+        request.user,
+        data=request.data,
+        partial=True,
+    )
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response({"message": "Successfully changed password."}, 200)
+
+
 class UserInfoViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
+    serializer_class = UserInfoSerializer
     permission_classes = (IsAuthenticated,)
 
     @action(detail=False, methods=["get"])
     def get_current(self, request):
-        serializer = UserInfoSerializer(request.user)
+        serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
     @action(detail=False, methods=["patch"])
     def partial_update_current(self, request):
-        change_pass_serializer = None
-        if request.data.get("password") is not None:
-            change_pass_serializer = ChangePasswordSerializer(
-                request.user, data=request.data
-            )
-            change_pass_serializer.is_valid(raise_exception=True)
-        serializer = UserInfoSerializer(request.user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        # if everything is fine, we apply all changes at once
-        if change_pass_serializer is not None:
-            change_pass_serializer.save()
-        serializer.save()
-        return Response(serializer.data, 200)
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, 200)
 
     @action(detail=False, methods=["delete"])
     def delete_current(self, request):
