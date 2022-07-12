@@ -73,6 +73,8 @@ class ChangePasswordSerializer(ModelSerializer):
         super(ChangePasswordSerializer, self).__init__(*args, **kwargs)
 
     def validate(self, raw_data):
+        if any(list(map(lambda x: x not in raw_data, self.Meta.fields))):
+            raise ValidationError("No fields were provided.")
         if not check_password(raw_data["password"], self.instance.password):
             raise serializers.ValidationError("Old password is incorrect!")
         if check_password(raw_data["new_password"], self.instance.password):
