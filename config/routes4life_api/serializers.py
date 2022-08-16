@@ -1,5 +1,6 @@
 import string
 
+import sendgrid
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import BaseUserManager
@@ -8,7 +9,6 @@ from django.contrib.gis.db.models import Avg, OuterRef
 from django.contrib.gis.db.models.functions import GeometryDistance
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
-from django.core.mail import send_mail
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, Serializer, ValidationError
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
@@ -137,15 +137,30 @@ class FindEmailSerializer(Serializer):
     def save(self):
         email = self.validated_data["email"]
         code_to_send = ResetCodeManager.get_or_create_code(email)
-        send_mail(
-            subject="Reset password code",
-            message=f"Hi there, {email}."
-            + f"Please enter this code to reset your password: {code_to_send}."
-            + "Its TTL is only 2 minutes, so you should hurry!",
-            from_email=settings.EMAIL_HOST_USER,
-            recipient_list=[email],
-            fail_silently=True,
-        )
+        sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
+        data = {
+            "personalizations": [
+                {
+                    "to": [{"email": email}],
+                    "subject": "Reset password code",
+                }
+            ],
+            "from": {"email": settings.SENDGRID_SENDER_EMAIL},
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": f"Hi there, {email}."
+                    + f"Please enter this code to reset your password: {code_to_send}."
+                    + "Its is only working for 2 minutes, so you should hurry!",
+                }
+            ],
+        }
+        response = sg.client.mail.send.post(request_body=data)
+        if settings.DEBUG:
+            print("Trying to send an email......")
+            print(response.status_code)
+            print(response.body)
+            print(response.headers)
         return User.objects.get(email=email)
 
 
