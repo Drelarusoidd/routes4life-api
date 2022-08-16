@@ -224,9 +224,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # EMAIL_HOST_PASSWORD = env_config.get("EMAIL_HOST_PASSWORD")
 
 # MailChimp integration
-MAILCHIMP_API_KEY = env_config.get("MAILCHIMP_API_KEY")
-MAILCHIMP_DATA_CENTER = env_config.get("MAILCHIMP_DATA_CENTER")
-MAILCHIMP_EMAIL_LIST_ID = env_config.get("MAILCHIMP_EMAIL_LIST_ID")
+# MAILCHIMP_API_KEY = env_config.get("MAILCHIMP_API_KEY")
+# MAILCHIMP_DATA_CENTER = env_config.get("MAILCHIMP_DATA_CENTER")
+# MAILCHIMP_EMAIL_LIST_ID = env_config.get("MAILCHIMP_EMAIL_LIST_ID")
+
+# Sendgrid integration
+SENDGRID_API_KEY = env_config.get("SENDGRID_API_KEY")
+SENDGRID_SENDER_EMAIL = env_config.get("SENDGRID_SENDER_EMAIL")
 
 # Media files upload
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
