@@ -149,8 +149,8 @@ class FindEmailSerializer(Serializer):
             "content": [
                 {
                     "type": "text/plain",
-                    "value": f"Hi there, {email}."
-                    + f"Please enter this code to reset your password: {code_to_send}."
+                    "value": f"Hi there, {email}. "
+                    + f"Please enter this code to reset your password: {code_to_send}. "
                     + "Its is only working for 2 minutes, so you should hurry!",
                 }
             ],
