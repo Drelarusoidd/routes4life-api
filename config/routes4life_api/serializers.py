@@ -20,19 +20,22 @@ from routes4life_api.validators import (
     validate_distance,
     validate_latitude,
     validate_longitude,
+    validate_password,
     validate_place_ordering,
     validate_rating,
 )
 
 
 class RegisterUserSerializer(ModelSerializer):
-    confirmation_password = serializers.CharField(write_only=True)
+    confirmation_password = serializers.CharField(
+        write_only=True, validators=[validate_password]
+    )
 
     class Meta:
         model = User
         fields = ("email", "phone_number", "password", "confirmation_password")
         extra_kwargs = {
-            "password": {"write_only": True},
+            "password": {"write_only": True, "validators": [validate_password]},
             "phone_number": {"required": False, "default": "+000000000"},
         }
 
@@ -40,7 +43,6 @@ class RegisterUserSerializer(ModelSerializer):
         validated_data.pop("confirmation_password")
         email = validated_data.pop("email")
         password = validated_data.pop("password")
-        print(validated_data)
         return User.objects.create_user(email, password, **validated_data)
 
     def validate(self, raw_data):
@@ -60,8 +62,12 @@ class UpdateEmailSerializer(ModelSerializer):
 
 
 class ChangePasswordSerializer(ModelSerializer):
-    new_password = serializers.CharField(write_only=True)
-    confirmation_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(
+        write_only=True, validators=[validate_password]
+    )
+    confirmation_password = serializers.CharField(
+        write_only=True, validators=[validate_password]
+    )
 
     class Meta:
         model = User
@@ -94,8 +100,12 @@ class ChangePasswordSerializer(ModelSerializer):
 class ChangePasswordForgotSerializer(Serializer):
     email = serializers.EmailField(required=True)
     session_token = serializers.CharField(write_only=True, required=True)
-    new_password = serializers.CharField(write_only=True, required=True)
-    confirmation_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password]
+    )
+    confirmation_password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password]
+    )
 
     def validate(self, raw_data):
         norm_email = BaseUserManager.normalize_email(raw_data["email"])
@@ -111,7 +121,7 @@ class ChangePasswordForgotSerializer(Serializer):
         ):
             raise ValidationError({"session_token": "Invalid session token provided."})
         if raw_data["new_password"] != raw_data["confirmation_password"]:
-            raise serializers.ValidationError("New passwords don't match!")
+            raise ValidationError("New passwords don't match!")
         if not SessionTokenManager.try_use_token(norm_email, raw_data["session_token"]):
             raise ValidationError(
                 {"session_token": "Session token has expired or it is incorrect."}
@@ -333,8 +343,10 @@ class UpdatePlaceImagesSerializer(Serializer):
             if _id not in place.secondary_images.values_list("id", flat=True):
                 raise ValidationError({"image_ids_to_delete": "Some ids do not exist."})
 
-        num_upload = place.secondary_images.all().count() + len(
-            raw_data["images_to_upload"]
+        num_upload = (
+            place.secondary_images.all().count()
+            - num_delete
+            + len(raw_data["images_to_upload"])
         )
         if num_upload > 10:
             raise ValidationError(

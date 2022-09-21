@@ -1,11 +1,13 @@
 import pytest
 from faker import Faker
 
+from tests.factories import fake_password
+
 
 @pytest.mark.django_db
 def test_user_settings(client, user_factory):
     user = user_factory.create()
-    password = Faker().password()
+    password = fake_password()
     user.set_password(password)
     assert user.check_password(password)
     user.save()
