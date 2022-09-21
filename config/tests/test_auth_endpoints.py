@@ -5,12 +5,14 @@ from django.contrib.auth.hashers import check_password
 from faker import Faker
 from routes4life_api.utils import ResetCodeManager
 
+from tests.factories import fake_password
+
 
 @pytest.mark.django_db
 def test_signup(client, user_factory, django_user_model):
     fake = Faker()
     user_data = user_factory.build()
-    password = fake.password()
+    password = fake_password()
     response = client.post(
         path="/api/auth/signup/",
         data={
@@ -31,7 +33,7 @@ def test_signup(client, user_factory, django_user_model):
     )
 
     # Signup with existing email
-    password = fake.password()
+    password = fake_password()
     response = client.post(
         path="/api/auth/signup/",
         data={
@@ -65,7 +67,7 @@ def test_get_token(client, user_factory):
 def test_change_email(client, user_factory):
     fake = Faker()
     user = user_factory.create()
-    password = fake.password()
+    password = fake_password()
     user.set_password(password)
     assert user.check_password(password)
     user.save()
@@ -96,7 +98,7 @@ def test_change_email(client, user_factory):
     old_email = user.email
     new_email = "test.new.email.2@google.com"
     user2 = user_factory.create()
-    password = fake.password()
+    password = fake_password()
     user2.set_password(password)
     assert user2.check_password(password)
     user2.email = new_email
@@ -118,8 +120,8 @@ def test_change_email(client, user_factory):
 def test_change_password(client, user_factory):
     fake = Faker()
     user = user_factory.create()
-    password = fake.password()
-    new_password = fake.password()
+    password = fake_password()
+    new_password = fake_password()
     user.set_password(password)
     assert user.check_password(password)
     user.save()
@@ -181,8 +183,8 @@ def test_change_password(client, user_factory):
 def test_reset_password_flow(client, user_factory):
     fake = Faker()
     user = user_factory.create()
-    password = fake.password()
-    new_password = fake.password()
+    password = fake_password()
+    new_password = fake_password()
     user.set_password(password)
     assert user.check_password(password)
     user.save()

@@ -13,11 +13,13 @@ from routes4life_api.serializers import (
 )
 from routes4life_api.utils import ResetCodeManager, SessionTokenManager
 
+from tests.factories import fake_password
+
 
 @pytest.mark.django_db
 def test_register_user_serializer(user_factory):
     user_data = user_factory.build()
-    password = "123456789"
+    password = fake_password()
     serializer = RegisterUserSerializer(
         data={
             "email": user_data.email,
@@ -33,7 +35,6 @@ def test_register_user_serializer(user_factory):
     # DON'T PASS EMPTY PHONE NUMBER
     user_data.email = ".".join(user_data.email.split(".")[:-1]) + ".exe"
     assert new_user.email != user_data.email
-    password = "123456789"
     serializer = RegisterUserSerializer(
         data={
             "email": user_data.email,
@@ -61,7 +62,7 @@ def test_register_user_serializer(user_factory):
 @pytest.mark.django_db
 def test_update_email_serializer(user_factory):
     test_user = user_factory.create()
-    password = "123456789"
+    password = fake_password()
     old_email = test_user.email
 
     test_user.set_password(password)
@@ -77,7 +78,7 @@ def test_update_email_serializer(user_factory):
 @pytest.mark.django_db
 def test_user_info_serializer(user_factory):
     test_user = user_factory.create()
-    password = "123456789"
+    password = fake_password()
 
     old_email = test_user.email
     old_fname = test_user.first_name
@@ -134,12 +135,12 @@ def test_user_info_serializer(user_factory):
 @pytest.mark.django_db
 def test_change_password_serializer(user_factory):
     test_user = user_factory.create()
-    password = "123456789"
+    password = fake_password()
     test_user.set_password(password)
     assert test_user.check_password(password)
 
     # Check for normal behavior
-    new_password = "234567890"
+    new_password = fake_password()
     serializer = ChangePasswordSerializer(
         instance=test_user,
         data={
@@ -176,8 +177,8 @@ def test_change_password_serializer(user_factory):
     assert serializer.is_valid() is False
 
     # Check for non-matching passwords
-    new_password = "234567890"
-    confirmation_password = "123456789"
+    new_password = fake_password()
+    confirmation_password = new_password + "xx"
     serializer = ChangePasswordSerializer(
         instance=test_user,
         data={
@@ -189,11 +190,11 @@ def test_change_password_serializer(user_factory):
     assert serializer.is_valid() is False
 
     # Check for wrong old password
-    new_password = "234567890"
+    new_password = password
     serializer = ChangePasswordSerializer(
         instance=test_user,
         data={
-            "password": "definetly_not_a_password",
+            "password": fake_password(),
             "new_password": new_password,
             "confirmation_password": confirmation_password,
         },
@@ -204,7 +205,7 @@ def test_change_password_serializer(user_factory):
 @pytest.mark.django_db
 def test_password_reset_serializers(user_factory):
     test_user = user_factory.create()
-    password = "123456789"
+    password = fake_password()
     test_user.set_password(password)
     assert test_user.check_password(password)
 
@@ -242,7 +243,7 @@ def test_password_reset_serializers(user_factory):
 
     # Try providing wrong session token
     wrong_token = SessionTokenManager.get_or_create_token("emaildoesnotexist@email.rx")
-    new_password = "new_password"
+    new_password = fake_password()
     serializer3 = ChangePasswordForgotSerializer(
         data={
             "email": user_found.email,
